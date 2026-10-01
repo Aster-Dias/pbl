@@ -3,27 +3,35 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>AuthentiQ – Offline-First Counterfeit Detection</title>
+  <title>AuthentiQ – Consumer & Manufacturer Trust Platform</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <!-- QR Scanner Library (html5-qrcode) -->
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <!-- Client-side QR Code Generation Library -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </head>
 <body>
   <div class="app-shell">
     <!-- Top Navigation Header -->
     <header class="app-header">
-      <div class="header-brand">
+      <div class="header-brand" id="brand-logo-btn" style="cursor: pointer;">
         <div class="brand-badge">AQ</div>
         <div class="brand-titles">
           <span class="brand-name">Authenti<span class="brand-accent">Q</span></span>
-          <span class="brand-sub">Offline-First Defense</span>
+          <span class="brand-sub" id="header-portal-label">Consumer Dashboard</span>
         </div>
       </div>
 
       <div class="header-actions">
+        <!-- Quick Dashboard Mode Toggle -->
+        <button id="mode-switcher-btn" class="role-switch-btn" title="Switch between Consumer and Manufacturer Dashboards">
+          <span class="role-icon">🏢</span>
+          <span id="role-switch-label">Manufacturer Portal</span>
+        </button>
+
         <!-- Interactive Network Mode Toggle -->
         <button id="net-toggle-btn" class="net-pill online" title="Click to toggle simulated Offline / Airplane mode">
           <span class="net-dot"></span>
@@ -50,50 +58,83 @@
     <!-- Main Content Container -->
     <main class="content-container">
 
-      <!-- ================= SCREEN 1: HOME SCREEN ================= -->
-      <section id="screen-home" class="screen-view active">
+      <!-- ========================================================================= -->
+      <!-- 1. USER / CONSUMER DASHBOARD                                              -->
+      <!-- ========================================================================= -->
+      <section id="screen-user-dashboard" class="screen-view active">
+        <!-- Welcome Hero Card -->
         <div class="hero-card">
           <div class="hero-glow"></div>
           <div class="hero-shield-icon">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
               <path d="M9 12l2 2 4-4"/>
             </svg>
           </div>
-          <h1 class="hero-title">Verify Product Authenticity</h1>
-          <p class="hero-desc">Instant offline cryptographic verification using ECDSA P-256 digital signatures. No internet required for genuine status.</p>
+          <div class="badge-pill-soft">Consumer Authenticity Defense</div>
+          <h1 class="hero-title">Verify Any Product Instantly</h1>
+          <p class="hero-desc">100% offline mathematical verification using manufacturer ECDSA P-256 digital signatures with online clone detection.</p>
 
-          <button id="btn-start-scan" class="cta-scan-btn">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <rect x="3" y="3" width="7" height="7"/>
-              <rect x="14" y="3" width="7" height="7"/>
-              <rect x="14" y="14" width="7" height="7"/>
-              <rect x="3" y="14" width="7" height="7"/>
-            </svg>
-            <span>SCAN PRODUCT QR</span>
-          </button>
+          <div class="hero-actions-grid">
+            <button id="btn-start-scan" class="cta-scan-btn">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <rect x="3" y="3" width="7" height="7"/>
+                <rect x="14" y="3" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/>
+                <rect x="3" y="14" width="7" height="7"/>
+              </svg>
+              <span>SCAN PRODUCT QR</span>
+            </button>
+            <label class="cta-secondary-btn" for="qr-file-input-home">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <span>Upload QR Image</span>
+            </label>
+            <input type="file" id="qr-file-input-home" accept="image/*" style="display:none;" />
+          </div>
+        </div>
+
+        <!-- Consumer Trust Statistics -->
+        <div class="stats-overview-grid">
+          <div class="stat-box">
+            <span class="stat-num text-success" id="user-stat-verified">0</span>
+            <span class="stat-label">Verified Genuine</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-num text-danger" id="user-stat-counterfeit">0</span>
+            <span class="stat-label">Counterfeit / Failed</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-num text-warning" id="user-stat-suspicious">0</span>
+            <span class="stat-label">Clone Alerts</span>
+          </div>
         </div>
 
         <!-- Quick Demo Presets -->
         <div class="section-card">
           <div class="section-header">
-            <h3>Quick Evaluation Presets</h3>
+            <div>
+              <h3>Interactive Security Presets</h3>
+              <p class="section-sub">Test genuine signatures, tampered payloads, and clone detections:</p>
+            </div>
             <span class="section-tag">Instant Test</span>
           </div>
-          <p class="section-sub">Test genuine signatures, tampered payloads, and cloned duplicate scans:</p>
           <div class="preset-grid">
             <button class="preset-btn btn-preset-genuine" data-preset="genuine">
               <span class="preset-icon">✓</span>
               <div class="preset-info">
                 <strong>Genuine Product</strong>
-                <small>Valid ECDSA + Normal scan</small>
+                <small>Valid ECDSA + Safe location</small>
               </div>
             </button>
             <button class="preset-btn btn-preset-tamper-name" data-preset="tamper-name">
               <span class="preset-icon">✕</span>
               <div class="preset-info">
-                <strong>Tampered Name</strong>
-                <small>Altered data → Signature fails</small>
+                <strong>Tampered Data</strong>
+                <small>Altered name → Signature fails</small>
               </div>
             </button>
             <button class="preset-btn btn-preset-tamper-batch" data-preset="tamper-batch">
@@ -107,30 +148,326 @@
               <span class="preset-icon">⚠</span>
               <div class="preset-info">
                 <strong>Duplicate / Clone</strong>
-                <small>Valid sig + Rapid distant scans</small>
+                <small>Valid sig + Rapid distant scan</small>
               </div>
             </button>
           </div>
         </div>
 
-        <!-- Recent Verifications -->
+        <!-- Recent Verification History -->
         <div class="section-card">
           <div class="section-header">
             <h3>Recent Verifications</h3>
-            <button id="btn-view-all-history" class="text-link">View All</button>
+            <button id="btn-view-all-history" class="text-link">View Full History</button>
           </div>
           <div id="home-history-list" class="history-list-compact">
-            <!-- Populated via JS -->
-            <div class="empty-state">No scans recorded yet. Scan a product to begin.</div>
+            <div class="empty-state">No scans recorded yet. Scan or test a preset to begin.</div>
           </div>
         </div>
       </section>
 
-      <!-- ================= SCREEN 2: SCANNER SCREEN ================= -->
+      <!-- ========================================================================= -->
+      <!-- 2. MANUFACTURER DASHBOARD & PORTAL                                        -->
+      <!-- ========================================================================= -->
+      <section id="screen-manufacturer-dashboard" class="screen-view">
+        
+        <!-- Manufacturer Auth Screen (when not logged in) -->
+        <div id="mfg-auth-container">
+          <div class="mfg-hero-card">
+            <div class="hero-badge-mfg">🏢 MANUFACTURER ENTERPRISE PORTAL</div>
+            <h2>Product Authentication & Cryptographic Signing Suite</h2>
+            <p>Generate tamper-proof ECDSA P-256 signed QR codes with your private key, monitor duplicate scans, and track brand protection metrics.</p>
+          </div>
+
+          <div class="section-card">
+            <div class="auth-tabs">
+              <button class="auth-tab active" id="tab-mfg-login">Manufacturer Login</button>
+              <button class="auth-tab" id="tab-mfg-quick-demo">⚡ 1-Click Demo Login</button>
+            </div>
+
+            <form id="mfg-login-form">
+              <div class="form-group">
+                <label>Manufacturer Account Email</label>
+                <input type="email" id="login-email" value="admin@authentiq.demo" class="input-field" required />
+              </div>
+              <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="login-password" value="admin123" class="input-field" required />
+              </div>
+              <div class="form-row" style="margin-top: 14px;">
+                <button type="submit" class="btn-primary" style="flex:1;">Sign In to Dashboard</button>
+                <button type="button" id="btn-demo-quick-login" class="btn-secondary" style="flex:1;">⚡ Quick Demo Login</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Manufacturer Main Dashboard Screen (when logged in) -->
+        <div id="mfg-main-dashboard" style="display:none;">
+          <!-- Top Manufacturer Profile Header -->
+          <div class="mfg-portal-header">
+            <div class="mfg-profile-info">
+              <div class="mfg-avatar">🏭</div>
+              <div>
+                <h3 id="mfg-company-name">AuthentiQ Global Pharma Ltd</h3>
+                <span class="mfg-sub-meta">Org Code: <strong id="mfg-org-code-display" class="text-info">AUTH</strong> | Active Key: <strong id="mfg-key-id-display">AUTHENTIQ-KEY-001</strong></span>
+              </div>
+            </div>
+            <button id="btn-mfg-logout" class="btn-sm btn-danger-outline">Sign Out</button>
+          </div>
+
+          <!-- Manufacturer KPI Analytics Cards -->
+          <div class="mfg-kpi-grid">
+            <div class="kpi-card">
+              <span class="kpi-title">Registered Products</span>
+              <div class="kpi-val" id="mfg-kpi-products">0</div>
+              <span class="kpi-footer text-info">Signed with P-256</span>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-title">Total Verifications</span>
+              <div class="kpi-val text-success" id="mfg-kpi-scans">0</div>
+              <span class="kpi-footer text-success">Consumer Scans</span>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-title">Counterfeit Attempts</span>
+              <div class="kpi-val text-danger" id="mfg-kpi-counterfeits">0</div>
+              <span class="kpi-footer text-danger">Invalid Signatures</span>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-title">Clone / Geo Anomaly</span>
+              <div class="kpi-val text-warning" id="mfg-kpi-clones">0</div>
+              <span class="kpi-footer text-warning">Rapid Duplicates</span>
+            </div>
+          </div>
+
+          <!-- Section: Cryptographic Key Management Studio -->
+          <div class="section-card">
+            <div class="section-header">
+              <div>
+                <h3>🔑 Manufacturer Cryptographic Key Studio</h3>
+                <p class="section-sub">Manage your ECDSA P-256 (secp256r1) keypair for digital signature generation:</p>
+              </div>
+              <button id="btn-generate-new-keypair" class="btn-sm btn-primary">⚡ Generate New Keypair</button>
+            </div>
+
+            <div class="key-management-box">
+              <div class="form-group">
+                <div class="label-row">
+                  <label>Private Key (Used for Offline Signing):</label>
+                  <button type="button" id="btn-toggle-privkey" class="text-link">Show Key</button>
+                </div>
+                <div class="key-input-wrapper">
+                  <input type="password" id="mfg-private-key-input" class="input-field font-mono" placeholder="Enter or generate 32-byte Hex / PEM Private Key..." />
+                  <button type="button" id="btn-use-default-key" class="btn-xs btn-secondary">Reset to Default</button>
+                </div>
+                <small class="text-muted">Keep this secret. Private key never leaves your secure environment.</small>
+              </div>
+
+              <div class="form-group">
+                <label>Matching Public Key (Published for Consumer Verification):</label>
+                <textarea id="mfg-public-key-preview" class="input-field font-mono" rows="2" readonly></textarea>
+                <div class="key-actions-row">
+                  <button type="button" id="btn-publish-pubkey" class="btn-sm btn-secondary">💾 Save & Sync Public Key to Consumer Cache</button>
+                  <button type="button" id="btn-export-key-backup" class="btn-sm btn-secondary">📥 Export Keypair JSON</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: Product Creation & Private Key QR Code Generator -->
+          <div class="section-card qr-generator-card">
+            <div class="section-header">
+              <div>
+                <h3>📦 Generate Cryptographically Signed Product QR Code</h3>
+                <p class="section-sub">Sign canonical product specifications using your Private Key and render high-resolution QR codes:</p>
+              </div>
+              <span class="section-tag tag-success">ECDSA P-256 Signer</span>
+            </div>
+
+            <form id="create-product-form">
+              <div class="form-row">
+                <div class="form-group" style="flex: 2;">
+                  <label>Product Name *</label>
+                  <input type="text" id="new-prod-name" placeholder="e.g. AuthentiQ Paracetamol 500mg" class="input-field" required />
+                </div>
+                <div class="form-group" style="flex: 1;">
+                  <label>Organization Code</label>
+                  <input type="text" id="new-prod-org" value="AUTH" class="input-field font-mono" required />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Brand Name *</label>
+                  <input type="text" id="new-prod-brand" placeholder="e.g. AuthentiQ Pharma" class="input-field" required />
+                </div>
+                <div class="form-group">
+                  <label>Category</label>
+                  <select id="new-prod-cat" class="input-field">
+                    <option value="Pharmaceuticals">Pharmaceuticals</option>
+                    <option value="Electronics">Electronics & Hardware</option>
+                    <option value="Luxury Goods">Luxury & Fashion</option>
+                    <option value="Food & Beverages">Food & Beverages</option>
+                    <option value="Automotive Parts">Automotive Parts</option>
+                    <option value="General">General Goods</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Batch / Lot Number *</label>
+                  <input type="text" id="new-prod-batch" placeholder="e.g. BATCH-2026-X9" class="input-field font-mono" required />
+                </div>
+                <div class="form-group">
+                  <label>Custom / Auto Product ID</label>
+                  <input type="text" id="new-prod-custom-id" placeholder="Leave empty for auto ID" class="input-field font-mono" />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Manufacturing Date *</label>
+                  <input type="date" id="new-prod-mfg" class="input-field" required />
+                </div>
+                <div class="form-group">
+                  <label>Expiry Date *</label>
+                  <input type="date" id="new-prod-exp" class="input-field" required />
+                </div>
+              </div>
+
+              <!-- Signing Mode Selection -->
+              <div class="form-group">
+                <label>Cryptographic Signing Mode:</label>
+                <div class="signing-options-grid">
+                  <label class="radio-option-card active">
+                    <input type="radio" name="signing-mode" value="client-private-key" checked />
+                    <div class="radio-content">
+                      <strong>⚡ Sign Locally with Private Key (Offline Client Engine)</strong>
+                      <small>Instant in-browser ECDSA P-256 signing using your local Private Key.</small>
+                    </div>
+                  </label>
+                  <label class="radio-option-card">
+                    <input type="radio" name="signing-mode" value="server-backed" />
+                    <div class="radio-content">
+                      <strong>🌐 Sign via Authenticated Cloud Backend (REST API)</strong>
+                      <small>Signs via Spring Boot KeyManager and persists to central database.</small>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Live Canonical Payload String Construction Preview -->
+              <div class="canonical-live-box">
+                <div class="label-row">
+                  <label>Live Canonical String (Payload to be Signed):</label>
+                  <span class="canonical-badge">SHA256withECDSA</span>
+                </div>
+                <code id="new-prod-canonical-preview">AUTHENTIQ|1|AUTH|AUTH-P123456|Product Name|Brand|BATCH001|2026-10-01|2028-10-01</code>
+              </div>
+
+              <button type="submit" class="btn-primary btn-lg" style="margin-top: 14px; width: 100%;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  <path d="M9 12l2 2 4-4"/>
+                </svg>
+                <span>SIGN WITH PRIVATE KEY & GENERATE QR CODE</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- Generated QR Code Result Card (Appears after signing) -->
+          <div id="newly-created-qr-card" class="section-card generated-qr-container" style="display:none;">
+            <div class="section-header">
+              <div>
+                <h3>✨ Cryptographically Signed Product QR Code Ready</h3>
+                <span class="section-tag tag-success">ECDSA P-256 Verified (✓)</span>
+              </div>
+              <button type="button" id="btn-close-qr-card" class="text-link">Dismiss</button>
+            </div>
+
+            <div class="generated-qr-layout">
+              <div class="qr-canvas-box">
+                <div id="generated-qr-canvas-wrapper">
+                  <canvas id="generated-qr-canvas"></canvas>
+                  <img id="generated-qr-img" src="" alt="Product QR" style="display:none;" />
+                </div>
+                <span class="qr-canvas-hint">Scan with any AuthentiQ Consumer App</span>
+              </div>
+
+              <div class="generated-qr-details">
+                <h4 id="gen-prod-title">Product Title</h4>
+                <div class="meta-row"><strong>Product ID:</strong> <code id="gen-prod-id"></code></div>
+                <div class="meta-row"><strong>Batch / Lot:</strong> <span id="gen-prod-batch"></span></div>
+                <div class="meta-row"><strong>Mfg / Exp:</strong> <span id="gen-prod-dates"></span></div>
+                <div class="meta-row">
+                  <strong>ECDSA Signature (P-256):</strong>
+                  <code id="gen-prod-sig" class="sig-snippet"></code>
+                </div>
+                <div class="meta-row"><strong>Signing Key ID:</strong> <code id="gen-prod-kid"></code></div>
+
+                <div class="qr-action-buttons">
+                  <button id="btn-download-highres-qr" class="btn-primary">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="17 8 12 3 7 8"/>
+                      <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    Download High-Res QR (PNG)
+                  </button>
+                  <button id="btn-copy-qr-json" class="btn-secondary">📋 Copy Raw JSON</button>
+                  <button id="btn-print-packaging-label" class="btn-secondary">🖨 Print Packaging Label</button>
+                  <button id="btn-test-scan-generated" class="btn-accent">🚀 Test Verify in Consumer App</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Printable Label Layout (Modal/Print Container) -->
+            <div id="printable-label-template" class="printable-label-box" style="display:none;">
+              <div class="label-header">
+                <span class="label-brand-tag">AUTHENTIQ SECURE VERIFIED</span>
+                <span class="label-org" id="print-label-org">AUTH</span>
+              </div>
+              <div class="label-body">
+                <div class="label-qr-holder">
+                  <img id="print-label-qr-img" src="" alt="QR" />
+                </div>
+                <div class="label-text">
+                  <h4 id="print-label-name">Product Name</h4>
+                  <p><strong>PID:</strong> <span id="print-label-pid"></span></p>
+                  <p><strong>BATCH:</strong> <span id="print-label-batch"></span></p>
+                  <p><strong>EXP:</strong> <span id="print-label-exp"></span></p>
+                  <div class="label-footer-instruction">Scan with AuthentiQ to verify genuine product</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: Registered Products Inventory -->
+          <div class="section-card">
+            <div class="section-header">
+              <div>
+                <h3>📋 Product Catalog & Inventory</h3>
+                <p class="section-sub">Products cryptographically signed and registered under your organization:</p>
+              </div>
+              <button id="btn-refresh-inventory" class="btn-sm btn-secondary">↻ Refresh</button>
+            </div>
+
+            <div id="mfg-product-table-wrapper" class="table-wrapper">
+              <div class="empty-state">Loading registered products...</div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ========================================================================= -->
+      <!-- 3. LIVE QR SCANNER SCREEN                                                 -->
+      <!-- ========================================================================= -->
       <section id="screen-scanner" class="screen-view">
         <div class="scanner-container">
           <div class="scanner-header">
-            <button class="back-btn" data-target="screen-home">← Back</button>
+            <button class="back-btn" data-target="screen-user-dashboard">← Back</button>
             <h2>Scan Product QR</h2>
             <div class="mode-badge-small" id="scanner-net-mode">OFFLINE READY</div>
           </div>
@@ -148,7 +485,7 @@
           </div>
 
           <div class="scanner-controls">
-            <p class="scanner-hint">Point your camera at an AuthentiQ QR code</p>
+            <p class="scanner-hint">Align the QR code within the frame</p>
             <div class="camera-actions">
               <label class="upload-qr-label" for="qr-file-input">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -156,27 +493,29 @@
                   <polyline points="17 8 12 3 7 8"/>
                   <line x1="12" y1="3" x2="12" y2="15"/>
                 </svg>
-                Upload QR Image
+                Upload QR Image from Gallery
               </label>
               <input type="file" id="qr-file-input" accept="image/*" style="display:none;" />
             </div>
 
             <!-- Manual Raw JSON Payload Input (For debugging / labs) -->
             <details class="manual-input-details">
-              <summary>Paste Raw QR JSON</summary>
+              <summary>Paste Raw QR JSON Payload</summary>
               <div class="manual-input-box">
                 <textarea id="manual-qr-text" rows="4" placeholder='{"v":1,"alg":"ES256","kid":"AUTHENTIQ-KEY-001",...}'></textarea>
-                <button id="btn-verify-manual" class="btn-secondary">Verify Payload</button>
+                <button id="btn-verify-manual" class="btn-secondary" style="width:100%; margin-top:8px;">Verify Cryptographic Payload</button>
               </div>
             </details>
           </div>
         </div>
       </section>
 
-      <!-- ================= SCREEN 3: VERIFICATION RESULT SCREEN ================= -->
+      <!-- ========================================================================= -->
+      <!-- 4. VERIFICATION RESULT SCREEN                                             -->
+      <!-- ========================================================================= -->
       <section id="screen-result" class="screen-view">
         <div class="result-header">
-          <button class="back-btn" data-target="screen-home">← Home</button>
+          <button class="back-btn" data-target="screen-user-dashboard">← Consumer Dashboard</button>
           <h2>Verification Result</h2>
         </div>
 
@@ -192,34 +531,38 @@
             </svg>
             Scan Another Product
           </button>
-          <button id="btn-view-details" class="btn-secondary">View Complete Details</button>
+          <button id="btn-view-details" class="btn-secondary">View Complete Cryptographic Proof</button>
         </div>
       </section>
 
-      <!-- ================= SCREEN 4: PRODUCT DETAILS SCREEN ================= -->
+      <!-- ========================================================================= -->
+      <!-- 5. PRODUCT DETAILS & CRYPTOGRAPHIC PROOF                                  -->
+      <!-- ========================================================================= -->
       <section id="screen-product-details" class="screen-view">
         <div class="result-header">
-          <button class="back-btn" data-target="screen-result">← Back</button>
-          <h2>Product & Crypto Specs</h2>
+          <button class="back-btn" data-target="screen-result">← Back to Result</button>
+          <h2>Product & Crypto Proof</h2>
         </div>
         <div id="product-details-content">
           <!-- Injected via JavaScript -->
         </div>
       </section>
 
-      <!-- ================= SCREEN 5: HISTORY SCREEN ================= -->
+      <!-- ========================================================================= -->
+      <!-- 6. SCAN HISTORY SCREEN                                                    -->
+      <!-- ========================================================================= -->
       <section id="screen-history" class="screen-view">
         <div class="result-header">
-          <button class="back-btn" data-target="screen-home">← Home</button>
+          <button class="back-btn" data-target="screen-user-dashboard">← Dashboard</button>
           <h2>Scan History</h2>
-          <button id="btn-clear-history" class="text-link-danger">Clear</button>
+          <button id="btn-clear-history" class="text-link-danger">Clear All</button>
         </div>
 
         <div class="filter-tabs">
           <button class="filter-tab active" data-filter="all">All</button>
-          <button class="filter-tab" data-filter="genuine">Verified</button>
+          <button class="filter-tab" data-filter="genuine">Genuine</button>
           <button class="filter-tab" data-filter="suspicious">Suspicious</button>
-          <button class="filter-tab" data-filter="invalid">Failed</button>
+          <button class="filter-tab" data-filter="invalid">Counterfeit</button>
         </div>
 
         <div id="full-history-list" class="history-list-full">
@@ -227,15 +570,17 @@
         </div>
       </section>
 
-      <!-- ================= SCREEN 6: SECURITY DEMO & TAMPER LAB ================= -->
+      <!-- ========================================================================= -->
+      <!-- 7. SECURITY LAB & TAMPER SIMULATOR                                        -->
+      <!-- ========================================================================= -->
       <section id="screen-security-demo" class="screen-view">
         <div class="result-header">
-          <button class="back-btn" data-target="screen-home">← Home</button>
-          <h2>Security & Cryptography Demo</h2>
+          <button class="back-btn" data-target="screen-user-dashboard">← Dashboard</button>
+          <h2>Security & Cryptography Lab</h2>
         </div>
 
         <div class="demo-intro-card">
-          <h3>AuthentiQ Cryptographic Specification</h3>
+          <h3>AuthentiQ Cryptographic Engine</h3>
           <div class="crypto-spec-grid">
             <div class="spec-cell">
               <span class="spec-key">Algorithm</span>
@@ -250,7 +595,7 @@
               <strong class="spec-val text-success">Active & Functional (✓)</strong>
             </div>
             <div class="spec-cell">
-              <span class="spec-key">Public Key Storage</span>
+              <span class="spec-key">Public Key Store</span>
               <strong class="spec-val text-info">Cached Locally (✓)</strong>
             </div>
           </div>
@@ -259,10 +604,12 @@
         <!-- Interactive Live Tamper Lab -->
         <div class="section-card">
           <div class="section-header">
-            <h3>Interactive Tamper Lab</h3>
+            <div>
+              <h3>Interactive Tamper Lab</h3>
+              <p class="section-sub">Modify any field in real time. Altering even 1 character causes ECDSA signature failure.</p>
+            </div>
             <span class="section-tag tag-danger">Live Test</span>
           </div>
-          <p class="section-sub">Modify any field below in real-time. Notice how altering even 1 character immediately causes the ECDSA signature to fail.</p>
 
           <div class="tamper-form">
             <div class="form-group">
@@ -276,7 +623,7 @@
               </div>
               <div class="form-group">
                 <label>Batch Number:</label>
-                <input type="text" id="tamper-batch" value="BATCH001" class="input-field" />
+                <input type="text" id="tamper-batch" value="BATCH001" class="input-field font-mono" />
               </div>
             </div>
             <div class="form-row">
@@ -295,7 +642,7 @@
               <code id="tamper-canonical-preview">AUTHENTIQ|1|AUTH|AUTH-P001|Acme Paracetamol 500mg|Acme Pharma|BATCH001|2026-08-01|2028-08-01</code>
             </div>
 
-            <button id="btn-eval-tamper" class="btn-primary">Evaluate Cryptographic Signature</button>
+            <button id="btn-eval-tamper" class="btn-primary" style="width:100%;">Evaluate Cryptographic Signature</button>
             <div id="tamper-eval-result" class="tamper-result-box" style="display:none;"></div>
           </div>
         </div>
@@ -303,10 +650,12 @@
         <!-- Clone & Duplicate Scan Simulator -->
         <div class="section-card">
           <div class="section-header">
-            <h3>Clone / Duplicate Scan Simulator</h3>
+            <div>
+              <h3>Clone / Duplicate Scan Simulator</h3>
+              <p class="section-sub">Simulate an attacker copying a genuine QR code onto fake items across distant locations:</p>
+            </div>
             <span class="section-tag tag-warning">Risk Engine</span>
           </div>
-          <p class="section-sub">Simulate an attacker copying a genuine QR code onto fake items across multiple distant locations or devices:</p>
           
           <div class="clone-sim-controls">
             <button id="btn-sim-normal-scan" class="btn-secondary">1. Simulate 1 Normal Scan (SF)</button>
@@ -318,120 +667,27 @@
         </div>
       </section>
 
-      <!-- ================= SCREEN 7: MANUFACTURER PORTAL ================= -->
-      <section id="screen-manufacturer" class="screen-view">
-        <div class="result-header">
-          <button class="back-btn" data-target="screen-home">← Home</button>
-          <h2>Manufacturer Portal</h2>
-        </div>
-
-        <!-- Login / Auth Card -->
-        <div id="mfg-auth-card" class="section-card">
-          <h3>Manufacturer Login</h3>
-          <p class="section-sub">Demo Account: <code>admin@authentiq.demo</code> / <code>admin123</code></p>
-          <form id="mfg-login-form">
-            <div class="form-group">
-              <label>Email</label>
-              <input type="email" id="login-email" value="admin@authentiq.demo" class="input-field" required />
-            </div>
-            <div class="form-group">
-              <label>Password</label>
-              <input type="password" id="login-password" value="admin123" class="input-field" required />
-            </div>
-            <button type="submit" class="btn-primary">Login to Dashboard</button>
-          </form>
-        </div>
-
-        <!-- Manufacturer Management Dashboard -->
-        <div id="mfg-dashboard" style="display:none;">
-          <div class="mfg-bar">
-            <span id="mfg-user-info">Logged in as: <strong>AuthentiQ Demo Manufacturer</strong></span>
-            <button id="btn-mfg-logout" class="text-link-danger">Logout</button>
-          </div>
-
-          <!-- Create Product Form -->
-          <div class="section-card">
-            <h3>Create & Cryptographically Sign Product</h3>
-            <form id="create-product-form">
-              <div class="form-group">
-                <label>Product Name</label>
-                <input type="text" id="new-prod-name" placeholder="e.g. UltraFit Smartwatch 2" class="input-field" required />
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Brand</label>
-                  <input type="text" id="new-prod-brand" placeholder="e.g. FitPulse" class="input-field" required />
-                </div>
-                <div class="form-group">
-                  <label>Category</label>
-                  <input type="text" id="new-prod-cat" placeholder="e.g. Electronics" class="input-field" />
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Batch Number</label>
-                  <input type="text" id="new-prod-batch" placeholder="e.g. FP-2026-9" class="input-field" required />
-                </div>
-                <div class="form-group">
-                  <label>Mfg Date</label>
-                  <input type="date" id="new-prod-mfg" class="input-field" required />
-                </div>
-                <div class="form-group">
-                  <label>Exp Date</label>
-                  <input type="date" id="new-prod-exp" class="input-field" required />
-                </div>
-              </div>
-              <button type="submit" class="btn-primary">Sign & Generate QR Code</button>
-            </form>
-          </div>
-
-          <!-- Live Generated QR Modal / Display -->
-          <div id="newly-created-qr-card" class="section-card" style="display:none;">
-            <div class="section-header">
-              <h3>Generated Signed QR Code</h3>
-              <span class="section-tag tag-success">Signed with P-256</span>
-            </div>
-            <div class="generated-qr-layout">
-              <img id="generated-qr-img" src="" alt="Product QR" class="qr-preview-img" />
-              <div class="generated-qr-details">
-                <h4 id="gen-prod-title"></h4>
-                <p><strong>Product ID:</strong> <code id="gen-prod-id"></code></p>
-                <p><strong>ECDSA Signature:</strong> <code id="gen-prod-sig" class="sig-snippet"></code></p>
-                <a id="btn-download-qr" download="product-qr.png" class="btn-secondary">Download High-Res QR</a>
-                <button id="btn-test-scan-generated" class="btn-primary" style="margin-top:8px;">Test Scan in App</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Products Table -->
-          <div class="section-card">
-            <h3>Registered Products</h3>
-            <div id="mfg-product-table-wrapper" class="table-wrapper">
-              <!-- Injected via JavaScript -->
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ================= SCREEN 8: SETTINGS SCREEN ================= -->
+      <!-- ========================================================================= -->
+      <!-- 8. SETTINGS & KEY MANAGEMENT                                              -->
+      <!-- ========================================================================= -->
       <section id="screen-settings" class="screen-view">
         <div class="result-header">
-          <button class="back-btn" data-target="screen-home">← Home</button>
-          <h2>Settings & Key Management</h2>
+          <button class="back-btn" data-target="screen-user-dashboard">← Dashboard</button>
+          <h2>Platform Settings & Keys</h2>
         </div>
 
         <div class="section-card">
           <h3>Backend Configuration</h3>
           <div class="form-group">
             <label>API Base URL</label>
-            <input type="text" id="settings-api-url" value="http://localhost:8080" class="input-field" />
+            <input type="text" id="settings-api-url" value="http://localhost:8080" class="input-field font-mono" />
           </div>
           <button id="btn-save-api-url" class="btn-secondary">Save API URL</button>
         </div>
 
         <div class="section-card">
-          <h3>Public Key Management</h3>
-          <p class="section-sub">Synchronize manufacturer public keys to maintain offline verification capabilities for newly introduced products:</p>
+          <h3>Consumer Public Key Store</h3>
+          <p class="section-sub">Cached manufacturer public keys enable instant offline signature verification:</p>
           <button id="btn-sync-keys" class="btn-primary">Fetch & Cache Active Public Keys</button>
           <div id="cached-keys-list" class="keys-list">
             <!-- Injected via JavaScript -->
@@ -440,9 +696,11 @@
 
         <div class="section-card">
           <h3>Offline Scan Sync Queue</h3>
-          <p class="section-sub">Scans performed offline are queued locally and synchronized automatically when internet is available:</p>
-          <button id="btn-sync-queue-now" class="btn-primary">Sync Pending Scans Now</button>
-          <button id="btn-clear-queue" class="text-link-danger" style="margin-left:12px;">Clear Queue</button>
+          <p class="section-sub">Scans performed offline are queued locally and synchronized automatically when internet is restored:</p>
+          <div class="form-row">
+            <button id="btn-sync-queue-now" class="btn-primary" style="flex:1;">Sync Pending Scans Now</button>
+            <button id="btn-clear-queue" class="btn-secondary" style="flex:1;">Clear Queue</button>
+          </div>
         </div>
       </section>
 
@@ -450,14 +708,16 @@
 
     <!-- Bottom Navigation Bar -->
     <nav class="bottom-nav">
-      <button class="nav-item active" data-screen="screen-home">
+      <!-- 1. Consumer Dashboard -->
+      <button class="nav-item active" data-screen="screen-user-dashboard">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
           <polyline points="9 22 9 12 15 12 15 22"/>
         </svg>
-        <span>Home</span>
+        <span>Consumer</span>
       </button>
 
+      <!-- 2. Camera Scanner -->
       <button class="nav-item nav-scan-center" data-screen="screen-scanner">
         <div class="scan-circle">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -467,16 +727,20 @@
             <rect x="3" y="14" width="7" height="7"/>
           </svg>
         </div>
-        <span>Scan</span>
+        <span>Scan QR</span>
       </button>
 
-      <button class="nav-item" data-screen="screen-security-demo">
+      <!-- 3. Manufacturer Dashboard -->
+      <button class="nav-item" data-screen="screen-manufacturer-dashboard">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
         </svg>
-        <span>Security Demo</span>
+        <span>Manufacturer</span>
       </button>
 
+      <!-- 4. History -->
       <button class="nav-item" data-screen="screen-history">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="10"/>
@@ -485,14 +749,15 @@
         <span>History</span>
       </button>
 
-      <button class="nav-item" data-screen="screen-manufacturer">
+      <!-- 5. Security Demo -->
+      <button class="nav-item" data-screen="screen-security-demo">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-          <circle cx="12" cy="7" r="4"/>
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
         </svg>
-        <span>Portal</span>
+        <span>Crypto Lab</span>
       </button>
 
+      <!-- 6. Settings -->
       <button class="nav-item" data-screen="screen-settings">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="3"/>
@@ -507,3 +772,4 @@
   <script type="module" src="app.js"></script>
 </body>
 </html>
+
