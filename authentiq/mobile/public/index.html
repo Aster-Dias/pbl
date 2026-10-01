@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>AuthentiQ – Offline-First Counterfeit Detection</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <!-- QR Scanner Library (html5-qrcode) -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Top Navigation Header -->
+    <header class="app-header">
+      <div class="header-brand">
+        <div class="brand-badge">AQ</div>
+        <div class="brand-titles">
+          <span class="brand-name">Authenti<span class="brand-accent">Q</span></span>
+          <span class="brand-sub">Offline-First Defense</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Interactive Network Mode Toggle -->
+        <button id="net-toggle-btn" class="net-pill online" title="Click to toggle simulated Offline / Airplane mode">
+          <span class="net-dot"></span>
+          <span id="net-status-text">ONLINE</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Subheader Status Banner -->
+    <div class="status-bar">
+      <div class="status-item">
+        <span class="status-indicator active"></span>
+        <span class="status-label">ECDSA P-256 Engine: <strong class="status-val">READY</strong></span>
+      </div>
+      <div class="status-item">
+        <span class="status-indicator active" id="key-cache-indicator"></span>
+        <span class="status-label">Public Keys: <strong id="cached-keys-count" class="status-val">Cached (✓)</strong></span>
+      </div>
+      <div class="status-item" id="queue-status-item" style="display:none;">
+        <span class="queue-badge" id="queue-badge-count">0 pending sync</span>
+      </div>
+    </div>
+
+    <!-- Main Content Container -->
+    <main class="content-container">
+
+      <!-- ================= SCREEN 1: HOME SCREEN ================= -->
+      <section id="screen-home" class="screen-view active">
+        <div class="hero-card">
+          <div class="hero-glow"></div>
+          <div class="hero-shield-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <path d="M9 12l2 2 4-4"/>
+            </svg>
+          </div>
+          <h1 class="hero-title">Verify Product Authenticity</h1>
+          <p class="hero-desc">Instant offline cryptographic verification using ECDSA P-256 digital signatures. No internet required for genuine status.</p>
+
+          <button id="btn-start-scan" class="cta-scan-btn">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <rect x="3" y="3" width="7" height="7"/>
+              <rect x="14" y="3" width="7" height="7"/>
+              <rect x="14" y="14" width="7" height="7"/>
+              <rect x="3" y="14" width="7" height="7"/>
+            </svg>
+            <span>SCAN PRODUCT QR</span>
+          </button>
+        </div>
+
+        <!-- Quick Demo Presets -->
+        <div class="section-card">
+          <div class="section-header">
+            <h3>Quick Evaluation Presets</h3>
+            <span class="section-tag">Instant Test</span>
+          </div>
+          <p class="section-sub">Test genuine signatures, tampered payloads, and cloned duplicate scans:</p>
+          <div class="preset-grid">
+            <button class="preset-btn btn-preset-genuine" data-preset="genuine">
+              <span class="preset-icon">✓</span>
+              <div class="preset-info">
+                <strong>Genuine Product</strong>
+                <small>Valid ECDSA + Normal scan</small>
+              </div>
+            </button>
+            <button class="preset-btn btn-preset-tamper-name" data-preset="tamper-name">
+              <span class="preset-icon">✕</span>
+              <div class="preset-info">
+                <strong>Tampered Name</strong>
+                <small>Altered data → Signature fails</small>
+              </div>
+            </button>
+            <button class="preset-btn btn-preset-tamper-batch" data-preset="tamper-batch">
+              <span class="preset-icon">✕</span>
+              <div class="preset-info">
+                <strong>Tampered Batch</strong>
+                <small>Modified batch number fails</small>
+              </div>
+            </button>
+            <button class="preset-btn btn-preset-clone" data-preset="clone">
+              <span class="preset-icon">⚠</span>
+              <div class="preset-info">
+                <strong>Duplicate / Clone</strong>
+                <small>Valid sig + Rapid distant scans</small>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Recent Verifications -->
+        <div class="section-card">
+          <div class="section-header">
+            <h3>Recent Verifications</h3>
+            <button id="btn-view-all-history" class="text-link">View All</button>
+          </div>
+          <div id="home-history-list" class="history-list-compact">
+            <!-- Populated via JS -->
+            <div class="empty-state">No scans recorded yet. Scan a product to begin.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= SCREEN 2: SCANNER SCREEN ================= -->
+      <section id="screen-scanner" class="screen-view">
+        <div class="scanner-container">
+          <div class="scanner-header">
+            <button class="back-btn" data-target="screen-home">← Back</button>
+            <h2>Scan Product QR</h2>
+            <div class="mode-badge-small" id="scanner-net-mode">OFFLINE READY</div>
+          </div>
+
+          <!-- Live Camera Viewfinder -->
+          <div class="viewfinder-wrapper">
+            <div id="qr-reader" class="qr-reader-viewport"></div>
+            <div class="viewfinder-overlay">
+              <div class="laser-scanner"></div>
+              <div class="corner top-left"></div>
+              <div class="corner top-right"></div>
+              <div class="corner bottom-left"></div>
+              <div class="corner bottom-right"></div>
+            </div>
+          </div>
+
+          <div class="scanner-controls">
+            <p class="scanner-hint">Point your camera at an AuthentiQ QR code</p>
+            <div class="camera-actions">
+              <label class="upload-qr-label" for="qr-file-input">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                Upload QR Image
+              </label>
+              <input type="file" id="qr-file-input" accept="image/*" style="display:none;" />
+            </div>
+
+            <!-- Manual Raw JSON Payload Input (For debugging / labs) -->
+            <details class="manual-input-details">
+              <summary>Paste Raw QR JSON</summary>
+              <div class="manual-input-box">
+                <textarea id="manual-qr-text" rows="4" placeholder='{"v":1,"alg":"ES256","kid":"AUTHENTIQ-KEY-001",...}'></textarea>
+                <button id="btn-verify-manual" class="btn-secondary">Verify Payload</button>
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= SCREEN 3: VERIFICATION RESULT SCREEN ================= -->
+      <section id="screen-result" class="screen-view">
+        <div class="result-header">
+          <button class="back-btn" data-target="screen-home">← Home</button>
+          <h2>Verification Result</h2>
+        </div>
+
+        <div id="result-card" class="result-card genuine">
+          <!-- Injected via JavaScript -->
+        </div>
+
+        <div class="result-actions">
+          <button class="cta-scan-btn" data-action="scan-again">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 4v6h-6M1 20v-6h6"/>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+            Scan Another Product
+          </button>
+          <button id="btn-view-details" class="btn-secondary">View Complete Details</button>
+        </div>
+      </section>
+
+      <!-- ================= SCREEN 4: PRODUCT DETAILS SCREEN ================= -->
+      <section id="screen-product-details" class="screen-view">
+        <div class="result-header">
+          <button class="back-btn" data-target="screen-result">← Back</button>
+          <h2>Product & Crypto Specs</h2>
+        </div>
+        <div id="product-details-content">
+          <!-- Injected via JavaScript -->
+        </div>
+      </section>
+
+      <!-- ================= SCREEN 5: HISTORY SCREEN ================= -->
+      <section id="screen-history" class="screen-view">
+        <div class="result-header">
+          <button class="back-btn" data-target="screen-home">← Home</button>
+          <h2>Scan History</h2>
+          <button id="btn-clear-history" class="text-link-danger">Clear</button>
+        </div>
+
+        <div class="filter-tabs">
+          <button class="filter-tab active" data-filter="all">All</button>
+          <button class="filter-tab" data-filter="genuine">Verified</button>
+          <button class="filter-tab" data-filter="suspicious">Suspicious</button>
+          <button class="filter-tab" data-filter="invalid">Failed</button>
+        </div>
+
+        <div id="full-history-list" class="history-list-full">
+          <!-- Injected via JavaScript -->
+        </div>
+      </section>
+
+      <!-- ================= SCREEN 6: SECURITY DEMO & TAMPER LAB ================= -->
+      <section id="screen-security-demo" class="screen-view">
+        <div class="result-header">
+          <button class="back-btn" data-target="screen-home">← Home</button>
+          <h2>Security & Cryptography Demo</h2>
+        </div>
+
+        <div class="demo-intro-card">
+          <h3>AuthentiQ Cryptographic Specification</h3>
+          <div class="crypto-spec-grid">
+            <div class="spec-cell">
+              <span class="spec-key">Algorithm</span>
+              <strong class="spec-val">SHA256withECDSA</strong>
+            </div>
+            <div class="spec-cell">
+              <span class="spec-key">Elliptic Curve</span>
+              <strong class="spec-val">secp256r1 (P-256)</strong>
+            </div>
+            <div class="spec-cell">
+              <span class="spec-key">Offline Verification</span>
+              <strong class="spec-val text-success">Active & Functional (✓)</strong>
+            </div>
+            <div class="spec-cell">
+              <span class="spec-key">Public Key Storage</span>
+              <strong class="spec-val text-info">Cached Locally (✓)</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive Live Tamper Lab -->
+        <div class="section-card">
+          <div class="section-header">
+            <h3>Interactive Tamper Lab</h3>
+            <span class="section-tag tag-danger">Live Test</span>
+          </div>
+          <p class="section-sub">Modify any field below in real-time. Notice how altering even 1 character immediately causes the ECDSA signature to fail.</p>
+
+          <div class="tamper-form">
+            <div class="form-group">
+              <label>Product Name (Tamperable):</label>
+              <input type="text" id="tamper-name" value="Acme Paracetamol 500mg" class="input-field" />
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Brand:</label>
+                <input type="text" id="tamper-brand" value="Acme Pharma" class="input-field" />
+              </div>
+              <div class="form-group">
+                <label>Batch Number:</label>
+                <input type="text" id="tamper-batch" value="BATCH001" class="input-field" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Mfg Date:</label>
+                <input type="text" id="tamper-mfg" value="2026-08-01" class="input-field" />
+              </div>
+              <div class="form-group">
+                <label>Exp Date:</label>
+                <input type="text" id="tamper-exp" value="2028-08-01" class="input-field" />
+              </div>
+            </div>
+
+            <div class="canonical-live-box">
+              <label>Reconstructed Canonical String:</label>
+              <code id="tamper-canonical-preview">AUTHENTIQ|1|AUTH|AUTH-P001|Acme Paracetamol 500mg|Acme Pharma|BATCH001|2026-08-01|2028-08-01</code>
+            </div>
+
+            <button id="btn-eval-tamper" class="btn-primary">Evaluate Cryptographic Signature</button>
+            <div id="tamper-eval-result" class="tamper-result-box" style="display:none;"></div>
+          </div>
+        </div>
+
+        <!-- Clone & Duplicate Scan Simulator -->
+        <div class="section-card">
+          <div class="section-header">
+            <h3>Clone / Duplicate Scan Simulator</h3>
+            <span class="section-tag tag-warning">Risk Engine</span>
+          </div>
+          <p class="section-sub">Simulate an attacker copying a genuine QR code onto fake items across multiple distant locations or devices:</p>
+          
+          <div class="clone-sim-controls">
+            <button id="btn-sim-normal-scan" class="btn-secondary">1. Simulate 1 Normal Scan (SF)</button>
+            <button id="btn-sim-rapid-burst" class="btn-secondary">2. Simulate Rapid Multi-Device Scans</button>
+            <button id="btn-sim-geo-anomaly" class="btn-danger">3. Simulate Impossible Geo Travel (SF → Tokyo in 2 mins)</button>
+          </div>
+
+          <div id="clone-sim-output" class="clone-output-box" style="display:none;"></div>
+        </div>
+      </section>
+
+      <!-- ================= SCREEN 7: MANUFACTURER PORTAL ================= -->
+      <section id="screen-manufacturer" class="screen-view">
+        <div class="result-header">
+          <button class="back-btn" data-target="screen-home">← Home</button>
+          <h2>Manufacturer Portal</h2>
+        </div>
+
+        <!-- Login / Auth Card -->
+        <div id="mfg-auth-card" class="section-card">
+          <h3>Manufacturer Login</h3>
+          <p class="section-sub">Demo Account: <code>admin@authentiq.demo</code> / <code>admin123</code></p>
+          <form id="mfg-login-form">
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" id="login-email" value="admin@authentiq.demo" class="input-field" required />
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <input type="password" id="login-password" value="admin123" class="input-field" required />
+            </div>
+            <button type="submit" class="btn-primary">Login to Dashboard</button>
+          </form>
+        </div>
+
+        <!-- Manufacturer Management Dashboard -->
+        <div id="mfg-dashboard" style="display:none;">
+          <div class="mfg-bar">
+            <span id="mfg-user-info">Logged in as: <strong>AuthentiQ Demo Manufacturer</strong></span>
+            <button id="btn-mfg-logout" class="text-link-danger">Logout</button>
+          </div>
+
+          <!-- Create Product Form -->
+          <div class="section-card">
+            <h3>Create & Cryptographically Sign Product</h3>
+            <form id="create-product-form">
+              <div class="form-group">
+                <label>Product Name</label>
+                <input type="text" id="new-prod-name" placeholder="e.g. UltraFit Smartwatch 2" class="input-field" required />
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Brand</label>
+                  <input type="text" id="new-prod-brand" placeholder="e.g. FitPulse" class="input-field" required />
+                </div>
+                <div class="form-group">
+                  <label>Category</label>
+                  <input type="text" id="new-prod-cat" placeholder="e.g. Electronics" class="input-field" />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Batch Number</label>
+                  <input type="text" id="new-prod-batch" placeholder="e.g. FP-2026-9" class="input-field" required />
+                </div>
+                <div class="form-group">
+                  <label>Mfg Date</label>
+                  <input type="date" id="new-prod-mfg" class="input-field" required />
+                </div>
+                <div class="form-group">
+                  <label>Exp Date</label>
+                  <input type="date" id="new-prod-exp" class="input-field" required />
+                </div>
+              </div>
+              <button type="submit" class="btn-primary">Sign & Generate QR Code</button>
+            </form>
+          </div>
+
+          <!-- Live Generated QR Modal / Display -->
+          <div id="newly-created-qr-card" class="section-card" style="display:none;">
+            <div class="section-header">
+              <h3>Generated Signed QR Code</h3>
+              <span class="section-tag tag-success">Signed with P-256</span>
+            </div>
+            <div class="generated-qr-layout">
+              <img id="generated-qr-img" src="" alt="Product QR" class="qr-preview-img" />
+              <div class="generated-qr-details">
+                <h4 id="gen-prod-title"></h4>
+                <p><strong>Product ID:</strong> <code id="gen-prod-id"></code></p>
+                <p><strong>ECDSA Signature:</strong> <code id="gen-prod-sig" class="sig-snippet"></code></p>
+                <a id="btn-download-qr" download="product-qr.png" class="btn-secondary">Download High-Res QR</a>
+                <button id="btn-test-scan-generated" class="btn-primary" style="margin-top:8px;">Test Scan in App</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Products Table -->
+          <div class="section-card">
+            <h3>Registered Products</h3>
+            <div id="mfg-product-table-wrapper" class="table-wrapper">
+              <!-- Injected via JavaScript -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= SCREEN 8: SETTINGS SCREEN ================= -->
+      <section id="screen-settings" class="screen-view">
+        <div class="result-header">
+          <button class="back-btn" data-target="screen-home">← Home</button>
+          <h2>Settings & Key Management</h2>
+        </div>
+
+        <div class="section-card">
+          <h3>Backend Configuration</h3>
+          <div class="form-group">
+            <label>API Base URL</label>
+            <input type="text" id="settings-api-url" value="http://localhost:8080" class="input-field" />
+          </div>
+          <button id="btn-save-api-url" class="btn-secondary">Save API URL</button>
+        </div>
+
+        <div class="section-card">
+          <h3>Public Key Management</h3>
+          <p class="section-sub">Synchronize manufacturer public keys to maintain offline verification capabilities for newly introduced products:</p>
+          <button id="btn-sync-keys" class="btn-primary">Fetch & Cache Active Public Keys</button>
+          <div id="cached-keys-list" class="keys-list">
+            <!-- Injected via JavaScript -->
+          </div>
+        </div>
+
+        <div class="section-card">
+          <h3>Offline Scan Sync Queue</h3>
+          <p class="section-sub">Scans performed offline are queued locally and synchronized automatically when internet is available:</p>
+          <button id="btn-sync-queue-now" class="btn-primary">Sync Pending Scans Now</button>
+          <button id="btn-clear-queue" class="text-link-danger" style="margin-left:12px;">Clear Queue</button>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-screen="screen-home">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        <span>Home</span>
+      </button>
+
+      <button class="nav-item nav-scan-center" data-screen="screen-scanner">
+        <div class="scan-circle">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+        </div>
+        <span>Scan</span>
+      </button>
+
+      <button class="nav-item" data-screen="screen-security-demo">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        <span>Security Demo</span>
+      </button>
+
+      <button class="nav-item" data-screen="screen-history">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span>History</span>
+      </button>
+
+      <button class="nav-item" data-screen="screen-manufacturer">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        <span>Portal</span>
+      </button>
+
+      <button class="nav-item" data-screen="screen-settings">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span>Settings</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Pure ES Module logic bundled with Noble-Curves and Hashes -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>

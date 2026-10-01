@@ -1,0 +1,28 @@
+package com.authentiq.controller;
+
+import com.authentiq.dto.ApiResponse;
+import com.authentiq.dto.DashboardStatsResponse;
+import com.authentiq.service.DashboardService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/dashboard")
+public class DashboardController {
+
+    private final DashboardService dashboardService;
+
+    public DashboardController(DashboardService dashboardService) {
+        this.dashboardService = dashboardService;
+    }
+
+    @GetMapping("/statistics")
+    public ResponseEntity<ApiResponse<DashboardStatsResponse>> getStatistics(Authentication authentication) {
+        String email = authentication.getName();
+        DashboardStatsResponse stats = dashboardService.getStatistics(email);
+        return ResponseEntity.ok(ApiResponse.ok("Dashboard statistics retrieved", stats));
+    }
+}

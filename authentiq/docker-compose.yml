@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: authentiq-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: authentiq_db
+      POSTGRES_USER: authentiq_user
+      POSTGRES_PASSWORD: authentiq_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - authentiq-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U authentiq_user -d authentiq_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Java Spring Boot Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: authentiq-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/authentiq_db
+      DATABASE_USERNAME: authentiq_user
+      DATABASE_PASSWORD: authentiq_password
+      JWT_SECRET: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+    ports:
+      - "8080:8080"
+    networks:
+      - authentiq-net
+
+  # React Native / Web Client
+  mobile-web:
+    build:
+      context: ./mobile
+      dockerfile: Dockerfile
+    container_name: authentiq-mobile-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    networks:
+      - authentiq-net
+
+networks:
+  authentiq-net:
+    driver: bridge
+
+volumes:
+  postgres_data:

@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.3.3</version>
+        <relativePath/>
+    </parent>
+    <groupId>com.authentiq</groupId>
+    <artifactId>authentiq-backend</artifactId>
+    <version>1.0.0</version>
+    <name>AuthentiQ Backend</name>
+    <description>Offline-First Counterfeit Product Detection System</description>
+
+    <properties>
+        <java.version>17</java.version>
+        <jjwt.version>0.12.6</jjwt.version>
+        <bouncycastle.version>1.78.1</bouncycastle.version>
+        <zxing.version>3.5.3</zxing.version>
+    </properties>
+
+    <dependencies>
+        <!-- Spring Boot Web -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Spring Boot Security -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- Spring Boot Data JPA -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!-- Bean Validation -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- PostgreSQL Driver -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- H2 Database for testing and fallback -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- JWT for authentication -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>${jjwt.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Bouncy Castle for Cryptography (ECDSA secp256r1) -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+            <version>${bouncycastle.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk18on</artifactId>
+            <version>${bouncycastle.version}</version>
+        </dependency>
+
+        <!-- ZXing for QR Code Generation -->
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>core</artifactId>
+            <version>${zxing.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>javase</artifactId>
+            <version>${zxing.version}</version>
+        </dependency>
+
+        <!-- Spring Boot Starter Test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

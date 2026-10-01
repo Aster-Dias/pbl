@@ -1,0 +1,29 @@
+# Build & Dependencies
+**/target/
+**/node_modules/
+tools/
+*.class
+*.jar
+*.war
+*.ear
+
+# Environment & Secrets
+.env
+*.env
+!.env.example
+*.pem
+*.key
+
+# IDE & OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Logs & Temporary Files
+*.log
+logs/
+**/data/
+*.sqlite
+*.db

@@ -1,0 +1,25 @@
+export const styles = {
+  colors: {
+    bg: '#090D16',
+    cardBg: '#111827',
+    cardBorder: '#1F2937',
+    cardBorderHighlight: '#374151',
+    textMain: '#F9FAFB',
+    textMuted: '#9CA3AF',
+    textSubtle: '#6B7280',
+    primary: '#06B6D4',
+    primaryHover: '#0891B2',
+    success: '#10B981',
+    successBg: 'rgba(16, 185, 129, 0.1)',
+    warning: '#F59E0B',
+    warningBg: 'rgba(245, 158, 11, 0.1)',
+    danger: '#EF4444',
+    dangerBg: 'rgba(239, 68, 68, 0.1)',
+    info: '#3B82F6',
+    infoBg: 'rgba(59, 130, 246, 0.1)',
+  },
+  typography: {
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    monoFamily: 'SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+  },
+};
