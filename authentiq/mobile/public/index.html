@@ -26,16 +26,27 @@
       </div>
 
       <div class="header-actions">
-        <!-- Quick Dashboard Mode Toggle -->
+        <!-- Logged in User Badge -->
+        <div id="user-profile-badge" class="user-profile-pill">
+          <span id="user-profile-icon">👤</span>
+          <span id="user-profile-name">Consumer</span>
+        </div>
+
+        <!-- Role Switcher Button -->
         <button id="mode-switcher-btn" class="role-switch-btn" title="Switch between Consumer and Manufacturer Dashboards">
           <span class="role-icon">🏢</span>
-          <span id="role-switch-label">Manufacturer Portal</span>
+          <span id="role-switch-label">Switch to Manufacturer</span>
         </button>
 
-        <!-- Interactive Network Mode Toggle -->
-        <button id="net-toggle-btn" class="net-pill online" title="Click to toggle simulated Offline / Airplane mode">
+        <!-- Network Mode Toggle -->
+        <button id="net-toggle-btn" class="net-pill online" title="Click to toggle simulated Offline mode">
           <span class="net-dot"></span>
           <span id="net-status-text">ONLINE</span>
+        </button>
+
+        <!-- Account / Login Button -->
+        <button id="auth-onboard-btn" class="btn-sm btn-secondary" title="Login / Switch Role">
+          <span>Role / Login</span>
         </button>
       </div>
     </header>
@@ -333,6 +344,48 @@
                 <div class="form-group">
                   <label>Expiry Date *</label>
                   <input type="date" id="new-prod-exp" class="input-field" required />
+                </div>
+              </div>
+
+              <!-- Product Image Selector -->
+              <div class="form-group">
+                <label>Product Image Visual *</label>
+                <div class="image-preset-grid">
+                  <div class="preset-img-option selected" data-icon="💊" data-name="Pharma">
+                    <span class="preset-img-icon">💊</span>
+                    <span class="preset-img-label">Pharma</span>
+                  </div>
+                  <div class="preset-img-option" data-icon="⌚" data-name="Watch">
+                    <span class="preset-img-icon">⌚</span>
+                    <span class="preset-img-label">Watch</span>
+                  </div>
+                  <div class="preset-img-option" data-icon="🧴" data-name="Fragrance">
+                    <span class="preset-img-icon">🧴</span>
+                    <span class="preset-img-label">Fragrance</span>
+                  </div>
+                  <div class="preset-img-option" data-icon="📱" data-name="Tech">
+                    <span class="preset-img-icon">📱</span>
+                    <span class="preset-img-label">Tech</span>
+                  </div>
+                  <div class="preset-img-option" data-icon="🍏" data-name="Food">
+                    <span class="preset-img-icon">🍏</span>
+                    <span class="preset-img-label">Food</span>
+                  </div>
+                  <div class="preset-img-option" data-icon="⚙️" data-name="Auto">
+                    <span class="preset-img-icon">⚙️</span>
+                    <span class="preset-img-label">Auto</span>
+                  </div>
+                </div>
+
+                <div class="custom-img-upload-box">
+                  <div class="img-preview-thumb" id="new-prod-img-preview-box">
+                    <span id="new-prod-img-icon-preview">💊</span>
+                  </div>
+                  <div style="flex: 1;">
+                    <label for="new-prod-image-file" class="btn-xs btn-secondary" style="cursor: pointer; display: inline-block;">📷 Upload Custom Image File</label>
+                    <input type="file" id="new-prod-image-file" accept="image/*" style="display: none;" />
+                    <small class="text-muted" style="display: block; margin-top: 4px;">Choose an icon preset above or upload your own product photo.</small>
+                  </div>
                 </div>
               </div>
 
@@ -766,6 +819,103 @@
         <span>Settings</span>
       </button>
     </nav>
+  </div>
+
+  <!-- Modal: Authentication & Role Onboarding -->
+  <div id="auth-onboarding-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header-title">
+        <h2>Welcome to AuthentiQ</h2>
+        <p>Select your workspace role to log in or register:</p>
+      </div>
+
+      <div class="role-selection-grid">
+        <div class="role-card-option selected" id="role-option-mfg" data-role="manufacturer">
+          <span class="role-option-icon">🏢</span>
+          <h4>Manufacturer</h4>
+          <p>Register products, sign ECDSA QR codes, publish public keys</p>
+        </div>
+        <div class="role-card-option" id="role-option-consumer" data-role="consumer">
+          <span class="role-option-icon">👤</span>
+          <h4>Consumer</h4>
+          <p>Scan product QRs, verify digital signatures offline, check authenticity</p>
+        </div>
+      </div>
+
+      <!-- Form for Manufacturer -->
+      <form id="onboard-mfg-form">
+        <div class="form-group">
+          <label>Manufacturer Email ID *</label>
+          <input type="email" id="onboard-mfg-email" class="input-field" placeholder="e.g. admin@acme-pharma.com" value="admin@authentiq.demo" required />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Brand Name *</label>
+            <input type="text" id="onboard-mfg-brand" class="input-field" placeholder="e.g. Acme Pharma" value="Acme Pharma" required />
+          </div>
+          <div class="form-group">
+            <label>Organization Code *</label>
+            <input type="text" id="onboard-mfg-org" class="input-field font-mono" placeholder="e.g. AUTH" value="AUTH" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Signing Key ID</label>
+          <input type="text" id="onboard-mfg-keyid" class="input-field font-mono" value="AUTHENTIQ-KEY-001" required />
+        </div>
+        <button type="submit" class="btn-primary btn-lg" style="width: 100%; margin-top: 10px;">Sign In as Manufacturer</button>
+      </form>
+
+      <!-- Form for Consumer -->
+      <form id="onboard-consumer-form" style="display: none;">
+        <div class="form-group">
+          <label>Consumer Name *</label>
+          <input type="text" id="onboard-consumer-name" class="input-field" placeholder="e.g. Alex" value="Consumer Alex" required />
+        </div>
+        <div class="form-group">
+          <label>Email Address (Optional)</label>
+          <input type="email" id="onboard-consumer-email" class="input-field" placeholder="e.g. alex@example.com" value="alex@consumer.org" />
+        </div>
+        <button type="submit" class="btn-primary btn-lg" style="width: 100%; margin-top: 10px;">Enter Consumer Dashboard</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Card-Level QR Signing Prompt -->
+  <div id="card-signing-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header-title">
+        <h2 id="card-sign-title">Sign Product & Generate QR Code</h2>
+        <p id="card-sign-sub">Create tamper-proof cryptographic signature for this product</p>
+      </div>
+
+      <div class="section-card" style="background: rgba(15, 23, 42, 0.6); margin-bottom: 14px;">
+        <div class="meta-row"><strong>Product ID:</strong> <code id="modal-sign-pid"></code></div>
+        <div class="meta-row"><strong>Product Name:</strong> <span id="modal-sign-name"></span></div>
+        <div class="meta-row"><strong>Organization / Brand:</strong> <span id="modal-sign-orgbrand"></span></div>
+        <div class="meta-row"><strong>Batch / Lot:</strong> <code id="modal-sign-batch"></code></div>
+      </div>
+
+      <form id="modal-sign-form">
+        <div class="form-group">
+          <div class="label-row">
+            <label>Manufacturer Private Key (Hex):</label>
+            <button type="button" id="btn-modal-gen-key" class="text-link">Generate Key</button>
+          </div>
+          <input type="password" id="modal-privkey-input" class="input-field font-mono" placeholder="Enter 32-byte Hex Private Key..." required />
+          <small class="text-muted">Used to sign product payload with ECDSA P-256 algorithm.</small>
+        </div>
+
+        <div class="form-group">
+          <label>Corresponding Public Key (Saved for Verification):</label>
+          <textarea id="modal-pubkey-preview" class="input-field font-mono" rows="2" readonly></textarea>
+        </div>
+
+        <div class="form-row" style="margin-top: 14px;">
+          <button type="submit" class="btn-primary" style="flex: 1;">⚡ Generate Signature & QR</button>
+          <button type="button" id="btn-cancel-modal-sign" class="btn-secondary">Cancel</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <!-- Pure ES Module logic bundled with Noble-Curves and Hashes -->

@@ -1,12 +1,17 @@
-import { p256 } from './node_modules/@noble/curves/esm/p256.js';
-import { sha256 } from './node_modules/@noble/hashes/esm/sha256.js';
+import { p256, sha256, QRCode, Html5Qrcode } from './crypto.bundle.js';
+
+if (typeof window !== 'undefined') {
+  window.QRCode = QRCode;
+  window.Html5Qrcode = Html5Qrcode;
+}
 
 // =========================================================================
 // 1. STATE & PERSISTENCE
 // =========================================================================
 const STATE = {
   currentScreen: 'screen-user-dashboard',
-  currentRole: 'consumer', // 'consumer' | 'manufacturer'
+  currentRole: localStorage.getItem('@authentiq_current_role') || 'consumer', // 'consumer' | 'manufacturer'
+  currentUser: JSON.parse(localStorage.getItem('@authentiq_user_profile') || 'null'),
   isSimulatedOffline: false,
   apiBaseUrl: localStorage.getItem('@authentiq_api_base_url') || 'http://localhost:8080',
   cachedKeys: JSON.parse(localStorage.getItem('@authentiq_cached_keys') || '{}'),
@@ -16,10 +21,14 @@ const STATE = {
   lastResult: null,
   jwtToken: localStorage.getItem('@authentiq_jwt_token') || null,
   mfgOrg: localStorage.getItem('@authentiq_user_org') || 'AUTH',
+  mfgBrand: localStorage.getItem('@authentiq_user_brand') || 'Acme Pharma',
   mfgPrivateKeyHex: localStorage.getItem('@authentiq_mfg_privkey') || null,
   mfgPublicKeyBase64: localStorage.getItem('@authentiq_mfg_pubkey') || null,
   mfgKeyId: localStorage.getItem('@authentiq_mfg_keyid') || 'AUTHENTIQ-KEY-001',
   html5QrCode: null,
+  selectedProductIcon: '💊',
+  selectedProductImageData: null,
+  activeSigningPid: null,
 };
 
 // Seed default demo key if not present
@@ -521,23 +530,67 @@ function updateHeaderPortalLabel() {
   const label = document.getElementById('header-portal-label');
   const switchBtn = document.getElementById('role-switch-label');
   const switchIcon = document.querySelector('.role-switch-btn .role-icon');
+  const userIcon = document.getElementById('user-profile-icon');
+  const userName = document.getElementById('user-profile-name');
 
-  if (STATE.currentScreen === 'screen-manufacturer-dashboard') {
-    if (label) label.textContent = 'Manufacturer Enterprise';
-    if (switchBtn) switchBtn.textContent = 'Consumer Mode';
+  if (STATE.currentRole === 'manufacturer') {
+    if (label) label.textContent = 'Manufacturer Portal';
+    if (switchBtn) switchBtn.textContent = 'Switch to Consumer';
     if (switchIcon) switchIcon.textContent = '👤';
+    if (userIcon) userIcon.textContent = '🏢';
+    if (userName) userName.textContent = `${STATE.mfgBrand} (${STATE.mfgOrg})`;
   } else {
     if (label) label.textContent = 'Consumer Dashboard';
-    if (switchBtn) switchBtn.textContent = 'Manufacturer Portal';
+    if (switchBtn) switchBtn.textContent = 'Switch to Manufacturer';
     if (switchIcon) switchIcon.textContent = '🏢';
+    if (userIcon) userIcon.textContent = '👤';
+    if (userName) userName.textContent = STATE.currentUser?.name || 'Consumer View';
   }
+
+  applyRoleIsolation();
+}
+
+function applyRoleIsolation() {
+  const navItems = document.querySelectorAll('.bottom-nav .nav-item');
+  navItems.forEach((btn) => {
+    const screen = btn.getAttribute('data-screen');
+    if (STATE.currentRole === 'manufacturer') {
+      if (screen === 'screen-user-dashboard' || screen === 'screen-scanner' || screen === 'screen-history') {
+        btn.style.display = 'none';
+      } else {
+        btn.style.display = 'flex';
+      }
+    } else {
+      if (screen === 'screen-manufacturer-dashboard') {
+        btn.style.display = 'none';
+      } else {
+        btn.style.display = 'flex';
+      }
+    }
+  });
+
+  // Pre-fill manufacturer form defaults
+  const orgInput = document.getElementById('new-prod-org');
+  const brandInput = document.getElementById('new-prod-brand');
+  if (orgInput) orgInput.value = STATE.mfgOrg || 'AUTH';
+  if (brandInput) brandInput.value = STATE.mfgBrand || 'Acme Pharma';
 }
 
 function togglePortalRole() {
-  if (STATE.currentScreen === 'screen-manufacturer-dashboard') {
+  if (STATE.currentRole === 'manufacturer') {
+    STATE.currentRole = 'consumer';
+    localStorage.setItem('@authentiq_current_role', 'consumer');
+    updateHeaderPortalLabel();
     navigateTo('screen-user-dashboard');
   } else {
-    navigateTo('screen-manufacturer-dashboard');
+    if (!STATE.currentUser || STATE.currentUser.role !== 'manufacturer') {
+      showOnboardingModal('manufacturer');
+    } else {
+      STATE.currentRole = 'manufacturer';
+      localStorage.setItem('@authentiq_current_role', 'manufacturer');
+      updateHeaderPortalLabel();
+      navigateTo('screen-manufacturer-dashboard');
+    }
   }
 }
 
@@ -784,6 +837,15 @@ function renderKeyManagementStudio() {
   if (orgDisplay) orgDisplay.textContent = STATE.mfgOrg || 'AUTH';
   if (keyIdDisplay) keyIdDisplay.textContent = STATE.mfgKeyId || 'AUTHENTIQ-KEY-001';
 
+  const mfgInput = document.getElementById('new-prod-mfg');
+  const expInput = document.getElementById('new-prod-exp');
+  if (mfgInput && !mfgInput.value) {
+    mfgInput.value = '2026-10-02';
+  }
+  if (expInput && !expInput.value) {
+    expInput.value = '2028-10-02';
+  }
+
   updateCanonicalPreview();
 }
 
@@ -911,14 +973,53 @@ async function handleGenerateProductQR(e) {
 
     const qrJsonString = JSON.stringify(qrPayload);
 
-    // 4. Render QR Code via Canvas
+    // 4. Render QR Code via Canvas and DataURL Image
     const canvas = document.getElementById('generated-qr-canvas');
-    if (typeof QRCode !== 'undefined' && canvas) {
-      await QRCode.toCanvas(canvas, qrJsonString, {
-        width: 280,
-        margin: 1,
-        color: { dark: '#030712', light: '#FFFFFF' },
-      });
+    let dataUrl = '';
+
+    const qrLib = (QRCode && typeof QRCode.toDataURL === 'function')
+      ? QRCode
+      : (QRCode && QRCode.default && typeof QRCode.default.toDataURL === 'function')
+      ? QRCode.default
+      : (typeof window !== 'undefined' && window.QRCode && typeof window.QRCode.toDataURL === 'function')
+      ? window.QRCode
+      : null;
+
+    if (qrLib) {
+      try {
+        dataUrl = await qrLib.toDataURL(qrJsonString, {
+          width: 320,
+          margin: 1,
+          color: { dark: '#030712', light: '#FFFFFF' },
+        });
+      } catch (err) {
+        console.warn('QRCode.toDataURL error:', err);
+      }
+
+      if (canvas) {
+        try {
+          await qrLib.toCanvas(canvas, qrJsonString, {
+            width: 280,
+            margin: 1,
+            color: { dark: '#030712', light: '#FFFFFF' },
+          });
+          if (!dataUrl) dataUrl = canvas.toDataURL('image/png');
+        } catch (err) {
+          console.warn('QRCode.toCanvas error:', err);
+        }
+      }
+    }
+
+    if (!dataUrl && canvas) {
+      try {
+        dataUrl = canvas.toDataURL('image/png');
+      } catch (e) {}
+    }
+
+    const qrImg = document.getElementById('generated-qr-img');
+    if (qrImg && dataUrl) {
+      qrImg.src = dataUrl;
+      qrImg.style.display = 'block';
     }
 
     // 5. Update Generated QR Result Card
@@ -933,7 +1034,6 @@ async function handleGenerateProductQR(e) {
     document.getElementById('gen-prod-kid').textContent = keyId;
 
     // High-Res PNG Download setup
-    const dataUrl = canvas.toDataURL('image/png');
     const downloadBtn = document.getElementById('btn-download-highres-qr');
     if (downloadBtn) {
       downloadBtn.onclick = () => {
@@ -975,12 +1075,16 @@ async function handleGenerateProductQR(e) {
       productId: pid,
       productName: name,
       brand,
+      org: STATE.mfgOrg,
       category,
       batchNumber: batch,
       manufacturingDate: mfg,
       expiryDate: exp,
       keyId,
       signature,
+      qrStatus: signature ? 'GENERATED' : 'PENDING',
+      productImage: STATE.selectedProductImageData,
+      productIcon: STATE.selectedProductIcon || '💊',
       scanCount: 0,
       riskLevel: 'LOW',
       status: 'ACTIVE',
@@ -1022,45 +1126,183 @@ function renderManufacturerProductsTable() {
   if (!tableWrapper) return;
 
   if (STATE.mfgProducts.length === 0) {
-    tableWrapper.innerHTML = `<div class="empty-state">No registered products. Use the form above to generate your first signed product QR.</div>`;
+    tableWrapper.innerHTML = `<div class="empty-state">No registered products. Fill out the form above to register a product.</div>`;
     return;
   }
 
   tableWrapper.innerHTML = `
-    <table class="mfg-table">
-      <thead>
-        <tr>
-          <th>Product ID</th>
-          <th>Product Name</th>
-          <th>Batch</th>
-          <th>Key ID</th>
-          <th>Scans</th>
-          <th>Status</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${STATE.mfgProducts
-          .map(
-            (p) => `
-          <tr>
-            <td><code>${p.productId}</code></td>
-            <td><strong>${p.productName}</strong><br><small class="text-muted">${p.brand}</small></td>
-            <td><code>${p.batchNumber}</code></td>
-            <td><small class="font-mono text-info">${p.keyId || 'P-256'}</small></td>
-            <td>${p.scanCount || 0}</td>
-            <td><span class="status-tag ${p.riskLevel === 'HIGH' || p.riskLevel === 'CRITICAL' ? 'tag-danger' : 'tag-success'}">${p.riskLevel || 'LOW'}</span></td>
-            <td>
-              <button class="btn-xs btn-primary" onclick="verifyCatalogProduct('${p.productId}')">Test Verify</button>
-            </td>
-          </tr>
-        `
-          )
-          .join('')}
-      </tbody>
-    </table>
+    <div class="mfg-product-grid">
+      ${STATE.mfgProducts
+        .map((p) => {
+          const isSigned = !!p.signature;
+          const imgDisplay = p.productImage
+            ? `<img src="${p.productImage}" alt="${p.productName}" />`
+            : `<span class="preset-large-icon">${p.productIcon || '💊'}</span>`;
+
+          return `
+            <div class="product-card">
+              <div class="product-card-banner">
+                ${imgDisplay}
+                <span class="product-status-tag ${isSigned ? 'tag-ready' : 'tag-pending'}">
+                  ${isSigned ? '✓ QR Ready' : '⚡ QR Pending'}
+                </span>
+              </div>
+              <div class="product-card-content">
+                <div>
+                  <h4 class="product-card-title">${p.productName}</h4>
+                  <div class="product-card-brand">${p.brand || STATE.mfgBrand} • <code class="text-info">${p.productId}</code></div>
+                  <div class="product-card-meta">
+                    <strong>Batch:</strong> ${p.batchNumber}<br>
+                    <strong>Mfg:</strong> ${p.manufacturingDate} | <strong>Exp:</strong> ${p.expiryDate}<br>
+                    <strong>Category:</strong> ${p.category || 'General'}
+                  </div>
+                </div>
+                <div class="product-card-actions">
+                  ${
+                    isSigned
+                      ? `<button class="btn-xs btn-accent" onclick="showCatalogProductQR('${p.productId}')" style="flex:1;">📱 View / Download QR</button>`
+                      : `<button class="btn-xs btn-primary" onclick="openCardSigningModal('${p.productId}')" style="flex:1;">⚡ Sign & Generate QR</button>`
+                  }
+                  <button class="btn-xs btn-secondary" onclick="verifyCatalogProduct('${p.productId}')">Test Verify</button>
+                </div>
+              </div>
+            </div>
+          `;
+        })
+        .join('')}
+    </div>
   `;
 }
+
+window.openCardSigningModal = function (pid) {
+  const item = STATE.mfgProducts.find((p) => p.productId === pid);
+  if (!item) return;
+
+  STATE.activeSigningPid = pid;
+  document.getElementById('modal-sign-pid').textContent = item.productId;
+  document.getElementById('modal-sign-name').textContent = item.productName;
+  document.getElementById('modal-sign-orgbrand').textContent = `${item.brand || STATE.mfgBrand} (${item.org || STATE.mfgOrg})`;
+  document.getElementById('modal-sign-batch').textContent = item.batchNumber;
+
+  const privInput = document.getElementById('modal-privkey-input');
+  if (privInput) privInput.value = STATE.mfgPrivateKeyHex || '';
+
+  const pubPreview = document.getElementById('modal-pubkey-preview');
+  if (pubPreview) pubPreview.value = STATE.mfgPublicKeyBase64 || '';
+
+  const modal = document.getElementById('card-signing-modal');
+  if (modal) modal.style.display = 'flex';
+};
+
+window.showCatalogProductQR = async function (pid) {
+  const item = STATE.mfgProducts.find((p) => p.productId === pid);
+  if (!item) return;
+
+  const qrPayload = item.qrPayload || {
+    v: 1,
+    alg: 'ES256',
+    kid: item.keyId || 'AUTHENTIQ-KEY-001',
+    mid: 'AUTH',
+    pid: item.productId,
+    name: item.productName,
+    brand: item.brand,
+    batch: item.batchNumber,
+    mfg: item.manufacturingDate,
+    exp: item.expiryDate,
+    sig: item.signature,
+  };
+
+  const qrJsonString = JSON.stringify(qrPayload);
+  const canvas = document.getElementById('generated-qr-canvas');
+  let dataUrl = '';
+
+  const qrLib = (QRCode && typeof QRCode.toDataURL === 'function')
+    ? QRCode
+    : (QRCode && QRCode.default && typeof QRCode.default.toDataURL === 'function')
+    ? QRCode.default
+    : (typeof window !== 'undefined' && window.QRCode && typeof window.QRCode.toDataURL === 'function')
+    ? window.QRCode
+    : null;
+
+  if (qrLib) {
+    try {
+      dataUrl = await qrLib.toDataURL(qrJsonString, {
+        width: 320,
+        margin: 1,
+        color: { dark: '#030712', light: '#FFFFFF' },
+      });
+    } catch (e) {
+      console.warn('QRCode.toDataURL failed:', e);
+    }
+
+    if (canvas) {
+      try {
+        await qrLib.toCanvas(canvas, qrJsonString, {
+          width: 280,
+          margin: 1,
+          color: { dark: '#030712', light: '#FFFFFF' },
+        });
+        if (!dataUrl) dataUrl = canvas.toDataURL('image/png');
+      } catch (e) {
+        console.warn('QRCode.toCanvas failed:', e);
+      }
+    }
+  }
+
+  if (!dataUrl && canvas) {
+    try {
+      dataUrl = canvas.toDataURL('image/png');
+    } catch (e) {}
+  }
+
+  const qrImg = document.getElementById('generated-qr-img');
+  if (qrImg && dataUrl) {
+    qrImg.src = dataUrl;
+    qrImg.style.display = 'block';
+  }
+
+  const printLabelImg = document.getElementById('print-label-qr-img');
+  if (printLabelImg && dataUrl) {
+    printLabelImg.src = dataUrl;
+  }
+
+  const qrCard = document.getElementById('newly-created-qr-card');
+  if (qrCard) qrCard.style.display = 'block';
+
+  document.getElementById('gen-prod-title').textContent = item.productName;
+  document.getElementById('gen-prod-id').textContent = item.productId;
+  document.getElementById('gen-prod-batch').textContent = item.batchNumber;
+  document.getElementById('gen-prod-dates').textContent = `Mfg: ${item.manufacturingDate} | Exp: ${item.expiryDate}`;
+  document.getElementById('gen-prod-sig').textContent = item.signature;
+  document.getElementById('gen-prod-kid').textContent = item.keyId || 'AUTHENTIQ-KEY-001';
+
+  const downloadBtn = document.getElementById('btn-download-highres-qr');
+  if (downloadBtn) {
+    downloadBtn.onclick = () => {
+      const a = document.createElement('a');
+      a.download = `${item.productId}-AuthentiQ-QR.png`;
+      a.href = dataUrl;
+      a.click();
+    };
+  }
+
+  const copyBtn = document.getElementById('btn-copy-qr-json');
+  if (copyBtn) {
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(qrJsonString).then(() => alert('📋 Raw QR JSON copied to clipboard!'));
+    };
+  }
+
+  const testBtn = document.getElementById('btn-test-scan-generated');
+  if (testBtn) {
+    testBtn.onclick = async () => {
+      const verifyRes = await processVerification(qrJsonString);
+      renderResultScreen(verifyRes);
+    };
+  }
+
+  qrCard.scrollIntoView({ behavior: 'smooth' });
+};
 
 window.verifyCatalogProduct = async function (pid) {
   const item = STATE.mfgProducts.find((p) => p.productId === pid);
@@ -1680,12 +1922,235 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 15. Initial Renders
+  // 15. Initial Renders & Onboarding
+  initAuthOnboarding();
+  initProductImageSelector();
+  initCardSigningModalEvents();
+
   setupTamperLab();
   setupCloneSimulator();
   updateConsumerStats();
   renderHomeHistory();
   renderCachedKeysList();
   renderKeyManagementStudio();
+  renderManufacturerProductsTable();
   updateHeaderPortalLabel();
+
+  // If no user profile exists, open onboarding modal
+  if (!STATE.currentUser) {
+    showOnboardingModal(STATE.currentRole);
+  }
 });
+
+function showOnboardingModal(defaultRole = 'manufacturer') {
+  const modal = document.getElementById('auth-onboarding-modal');
+  if (modal) {
+    modal.style.display = 'flex';
+    selectRoleOption(defaultRole);
+  }
+}
+
+function selectRoleOption(role) {
+  const mfgOption = document.getElementById('role-option-mfg');
+  const consumerOption = document.getElementById('role-option-consumer');
+  const mfgForm = document.getElementById('onboard-mfg-form');
+  const consumerForm = document.getElementById('onboard-consumer-form');
+
+  if (role === 'manufacturer') {
+    if (mfgOption) mfgOption.classList.add('selected');
+    if (consumerOption) consumerOption.classList.remove('selected');
+    if (mfgForm) mfgForm.style.display = 'block';
+    if (consumerForm) consumerForm.style.display = 'none';
+  } else {
+    if (consumerOption) consumerOption.classList.add('selected');
+    if (mfgOption) mfgOption.classList.remove('selected');
+    if (consumerForm) consumerForm.style.display = 'block';
+    if (mfgForm) mfgForm.style.display = 'none';
+  }
+}
+
+function initAuthOnboarding() {
+  const authBtn = document.getElementById('auth-onboard-btn');
+  if (authBtn) {
+    authBtn.addEventListener('click', () => showOnboardingModal(STATE.currentRole));
+  }
+
+  const mfgOption = document.getElementById('role-option-mfg');
+  const consumerOption = document.getElementById('role-option-consumer');
+  if (mfgOption) mfgOption.addEventListener('click', () => selectRoleOption('manufacturer'));
+  if (consumerOption) consumerOption.addEventListener('click', () => selectRoleOption('consumer'));
+
+  const mfgForm = document.getElementById('onboard-mfg-form');
+  if (mfgForm) {
+    mfgForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const email = document.getElementById('onboard-mfg-email').value.trim();
+      const brand = document.getElementById('onboard-mfg-brand').value.trim();
+      const org = document.getElementById('onboard-mfg-org').value.trim();
+      const keyId = document.getElementById('onboard-mfg-keyid').value.trim() || 'AUTHENTIQ-KEY-001';
+
+      STATE.currentUser = { role: 'manufacturer', email, brand, org, keyId };
+      STATE.currentRole = 'manufacturer';
+      STATE.mfgOrg = org;
+      STATE.mfgBrand = brand;
+      STATE.mfgKeyId = keyId;
+
+      localStorage.setItem('@authentiq_user_profile', JSON.stringify(STATE.currentUser));
+      localStorage.setItem('@authentiq_current_role', 'manufacturer');
+      localStorage.setItem('@authentiq_user_org', org);
+      localStorage.setItem('@authentiq_user_brand', brand);
+      localStorage.setItem('@authentiq_mfg_keyid', keyId);
+
+      document.getElementById('auth-onboarding-modal').style.display = 'none';
+      updateHeaderPortalLabel();
+      renderManufacturerProductsTable();
+      navigateTo('screen-manufacturer-dashboard');
+    });
+  }
+
+  const consumerForm = document.getElementById('onboard-consumer-form');
+  if (consumerForm) {
+    consumerForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = document.getElementById('onboard-consumer-name').value.trim();
+      const email = document.getElementById('onboard-consumer-email').value.trim();
+
+      STATE.currentUser = { role: 'consumer', name, email };
+      STATE.currentRole = 'consumer';
+
+      localStorage.setItem('@authentiq_user_profile', JSON.stringify(STATE.currentUser));
+      localStorage.setItem('@authentiq_current_role', 'consumer');
+
+      document.getElementById('auth-onboarding-modal').style.display = 'none';
+      updateHeaderPortalLabel();
+      navigateTo('screen-user-dashboard');
+    });
+  }
+}
+
+function initProductImageSelector() {
+  const options = document.querySelectorAll('.preset-img-option');
+  options.forEach((opt) => {
+    opt.addEventListener('click', () => {
+      options.forEach((o) => o.classList.remove('selected'));
+      opt.classList.add('selected');
+
+      const icon = opt.getAttribute('data-icon');
+      STATE.selectedProductIcon = icon;
+      STATE.selectedProductImageData = null;
+
+      const previewBox = document.getElementById('new-prod-img-preview-box');
+      if (previewBox) {
+        previewBox.innerHTML = `<span id="new-prod-img-icon-preview">${icon}</span>`;
+      }
+    });
+  });
+
+  const fileInput = document.getElementById('new-prod-image-file');
+  if (fileInput) {
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        STATE.selectedProductImageData = event.target.result;
+        const previewBox = document.getElementById('new-prod-img-preview-box');
+        if (previewBox) {
+          previewBox.innerHTML = `<img src="${event.target.result}" alt="Preview" />`;
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+}
+
+function initCardSigningModalEvents() {
+  const cancelBtn = document.getElementById('btn-cancel-modal-sign');
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', () => {
+      document.getElementById('card-signing-modal').style.display = 'none';
+    });
+  }
+
+  const genKeyBtn = document.getElementById('btn-modal-gen-key');
+  if (genKeyBtn) {
+    genKeyBtn.addEventListener('click', () => {
+      generateNewKeyPair();
+      const privInput = document.getElementById('modal-privkey-input');
+      const pubPreview = document.getElementById('modal-pubkey-preview');
+      if (privInput) privInput.value = STATE.mfgPrivateKeyHex;
+      if (pubPreview) pubPreview.value = STATE.mfgPublicKeyBase64;
+    });
+  }
+
+  const signForm = document.getElementById('modal-sign-form');
+  if (signForm) {
+    signForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const pid = STATE.activeSigningPid;
+      const item = STATE.mfgProducts.find((p) => p.productId === pid);
+      if (!item) return;
+
+      const privHex = document.getElementById('modal-privkey-input').value.trim();
+      if (!privHex) return alert('Please enter or generate a manufacturer private key.');
+
+      try {
+        const canonical = buildCanonicalString(
+          1,
+          item.org || STATE.mfgOrg,
+          item.productId,
+          item.productName,
+          item.brand || STATE.mfgBrand,
+          item.batchNumber,
+          item.manufacturingDate,
+          item.expiryDate
+        );
+
+        const sig = signWithPrivateKey(canonical, privHex);
+
+        // Derive and cache matching public key for consumer side
+        const privBytes = hexToBytes(privHex);
+        const pubBytes = p256.getPublicKey(privBytes, false);
+        const pubX509Base64 = encodeX509PublicKey(pubBytes);
+
+        STATE.cachedKeys[STATE.mfgKeyId] = {
+          keyId: STATE.mfgKeyId,
+          keyVersion: 1,
+          curve: 'secp256r1',
+          algorithm: 'SHA256withECDSA',
+          publicKey: pubX509Base64,
+          active: true,
+        };
+        localStorage.setItem('@authentiq_cached_keys', JSON.stringify(STATE.cachedKeys));
+
+        item.signature = sig;
+        item.qrStatus = 'GENERATED';
+        item.keyId = STATE.mfgKeyId;
+
+        const qrPayload = {
+          v: 1,
+          alg: 'ES256',
+          kid: STATE.mfgKeyId,
+          mid: item.org || STATE.mfgOrg,
+          pid: item.productId,
+          name: item.productName,
+          brand: item.brand || STATE.mfgBrand,
+          batch: item.batchNumber,
+          mfg: item.manufacturingDate,
+          exp: item.expiryDate,
+          sig,
+        };
+        item.qrPayload = qrPayload;
+
+        localStorage.setItem('@authentiq_mfg_products', JSON.stringify(STATE.mfgProducts));
+
+        document.getElementById('card-signing-modal').style.display = 'none';
+        renderManufacturerProductsTable();
+        await showCatalogProductQR(item.productId);
+      } catch (err) {
+        alert('Signing error: ' + err.message);
+      }
+    });
+  }
+}

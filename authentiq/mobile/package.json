@@ -4,6 +4,8 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "build": "esbuild src/crypto-entry.js --bundle --format=esm --outfile=public/crypto.bundle.js",
+    "prestart": "npm run build",
     "start": "node server.js",
     "dev": "node server.js",
     "test": "node tests/crypto.test.js"
@@ -11,6 +13,10 @@
   "dependencies": {
     "@noble/curves": "^1.4.0",
     "@noble/hashes": "^1.4.0",
+    "html5-qrcode": "^2.3.8",
     "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
   }
 }
