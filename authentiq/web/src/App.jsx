@@ -5,7 +5,7 @@ import ManufacturerView from './components/ManufacturerView';
 import ConsumerView from './components/ConsumerView';
 import CardSigningModal from './components/CardSigningModal';
 import QRViewModal from './components/QRViewModal';
-import { generateECDSAKeypair, p256, hexToBytes, encodeX509PublicKey } from './crypto';
+import { generateECDSAKeypair, p256, hexToBytes, encodeX509PublicKey, verifyOfflineEcdsa, buildCanonicalString } from './crypto';
 
 // Initial Demo Key & Products
 const INITIAL_DEMO_KEY_ID = 'AUTHENTIQ-KEY-001';
@@ -46,7 +46,7 @@ export default function App() {
         expiryDate: '2028-08-01',
         productIcon: '💊',
         keyId: INITIAL_DEMO_KEY_ID,
-        signature: 'MEUCIQDV7Rz4qOWaxnEQBaOwPQMVYrwEREeBI02CSiXsgmT5vwIgcaOgCxlPDZQ1B3jEPd/3YdSTwFXpWtTN8cLSP+zTehA=',
+        signature: 'QEaVANmsfG9rmSWLY6MRy9Jx/z6v1Zhv5iCDpH402btKuUUJJA0rlGzc9qBbQcMsTjQLcpYxNkmvH5Pob04qYg==',
         qrStatus: 'GENERATED',
       },
       {
@@ -60,8 +60,8 @@ export default function App() {
         expiryDate: '2029-09-15',
         productIcon: '⌚',
         keyId: INITIAL_DEMO_KEY_ID,
-        signature: '',
-        qrStatus: 'PENDING',
+        signature: 'iQC65DY1YRmhDsN8I4/jPGie73L9RebZ/nBy96ElTjFGFM0kfs4eLVBBMdrol2AZe9MuvAq/E4QOZswvkQHBsw==',
+        qrStatus: 'GENERATED',
       },
     ];
   });
@@ -189,16 +189,33 @@ export default function App() {
     localStorage.setItem('@authentiq_current_role', 'consumer');
     try {
       const payload = JSON.parse(qrJsonString);
+      let keyRecord = cachedKeys[payload.kid] || Object.values(cachedKeys)[0];
+      const canonical = buildCanonicalString(
+        payload.v || 1, payload.mid || 'AUTH', payload.pid,
+        payload.name, payload.brand, payload.batch, payload.mfg, payload.exp
+      );
+      let isCryptoValid = false;
+      if (keyRecord && keyRecord.publicKey && payload.sig) {
+        isCryptoValid = verifyOfflineEcdsa(canonical, payload.sig, keyRecord.publicKey);
+      }
       const res = {
-        status: 'GENUINE',
-        cryptographicallyValid: true,
+        status: isCryptoValid ? 'GENUINE' : 'INVALID',
+        cryptographicallyValid: isCryptoValid,
         payload,
+        canonicalPayload: canonical,
+        keyId: payload.kid,
         timestamp: new Date().toISOString(),
-        riskLevel: 'LOW',
-        riskReason: 'Valid ECDSA P-256 Signature',
+        riskLevel: isCryptoValid ? 'LOW' : 'CRITICAL',
+        riskReason: isCryptoValid ? 'Valid ECDSA P-256 Signature' : 'Digital Signature Verification Failed',
       };
       handleAddScanResult(res);
     } catch (e) {}
+  };
+
+  const handleAddBulkProducts = (newProds) => {
+    const updated = [...newProds, ...products];
+    setProducts(updated);
+    localStorage.setItem('@authentiq_mfg_products', JSON.stringify(updated));
   };
 
   return (
@@ -223,6 +240,7 @@ export default function App() {
           mfgPublicKeyBase64={mfgPublicKeyBase64}
           products={products}
           onAddProduct={handleAddProduct}
+          onAddBulkProducts={handleAddBulkProducts}
           onOpenCardSign={(p) => setActiveCardSignProduct(p)}
           onOpenQRView={(p) => setActiveQRViewProduct(p)}
           onGenerateKeyPair={handleGenerateKeyPair}

@@ -1,6 +1,7 @@
 import { p256 } from '@noble/curves/nist.js';
 import { sha256 } from '@noble/hashes/sha2.js';
-export { p256, sha256 };
+import { DER } from '@noble/curves/abstract/weierstrass.js';
+export { p256, sha256, DER };
 
 // Helper: Hex <-> Bytes
 export function hexToBytes(hex) {
@@ -63,14 +64,20 @@ export function buildCanonicalString(v, mid, pid, name, brand, batch, mfg, exp) 
 }
 
 export function parseSignatureBytes(sigBase64) {
+  if (!sigBase64) return new Uint8Array(64);
   const bytes = base64ToBytes(sigBase64);
   if (bytes.length === 64) {
-    return p256.Signature.fromCompact(bytes);
+    return bytes;
   }
   if (bytes[0] === 0x30) {
-    return p256.Signature.fromDER(bytes);
+    try {
+      const parsed = DER.toSig(bytes);
+      return new p256.Signature(parsed.r, parsed.s).toBytes();
+    } catch (e) {
+      console.warn('DER signature parse error:', e);
+    }
   }
-  return p256.Signature.fromCompact(bytes.slice(0, 64));
+  return bytes.slice(0, 64);
 }
 
 export function parsePublicKeyBytes(pubKeyBase64OrPem) {

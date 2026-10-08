@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { PlusCircle, ShieldCheck, Key, RefreshCw, Download, Zap, Eye, CheckCircle2, Image as ImageIcon } from 'lucide-react';
+import { PlusCircle, ShieldCheck, Key, RefreshCw, Download, Zap, Eye, CheckCircle2, Image as ImageIcon, PackageCheck, Printer, Sparkles } from 'lucide-react';
+import BulkGenerationModal from './BulkGenerationModal';
 
 export default function ManufacturerView({ 
   mfgOrg, 
@@ -9,11 +10,20 @@ export default function ManufacturerView({
   mfgPublicKeyBase64, 
   products, 
   onAddProduct, 
+  onAddBulkProducts,
   onOpenCardSign, 
   onOpenQRView, 
   onGenerateKeyPair, 
   onTestVerify 
 }) {
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [bulkInitialProduct, setBulkInitialProduct] = useState(null);
+
+  const handleOpenBulkModal = (product = null) => {
+    setBulkInitialProduct(product);
+    setIsBulkModalOpen(true);
+  };
+
   // Product Creation Form State
   const [prodName, setProdName] = useState('');
   const [category, setCategory] = useState('Pharmaceuticals');
@@ -110,11 +120,45 @@ export default function ManufacturerView({
         </div>
       </div>
 
+      {/* Bulk Production Banner & Action Card */}
+      <div 
+        className="card"
+        style={{
+          background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.15), rgba(16, 185, 129, 0.12))',
+          border: '1px solid rgba(14, 165, 233, 0.35)',
+          boxShadow: '0 8px 32px rgba(14, 165, 233, 0.15)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: '280px' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(14, 165, 233, 0.2)', padding: '4px 12px', borderRadius: '20px', color: '#0EA5E9', fontSize: '11px', fontWeight: 800, marginBottom: '8px' }}>
+              <Sparkles size={13} />
+              <span>ENTERPRISE BULK MANUFACTURING</span>
+            </div>
+            <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#FFF', marginBottom: '6px' }}>
+              ⚡ Bulk Product Generator &amp; Printable QR PDF Sheet
+            </h3>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              Manufacture <strong>10, 50, 100, or 500 watches/products</strong> of the same type at once. Automatically generates unique serial IDs, cryptographically signs each item with ECDSA P-256, and compiles a ready-to-print A4 PDF label sheet.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setIsBulkModalOpen(true)}
+            className="btn-accent"
+            style={{ padding: '14px 24px', fontSize: '15px', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 20px rgba(16, 185, 129, 0.35)' }}
+          >
+            <PackageCheck size={20} />
+            <span>Generate 100+ Products &amp; Print PDF</span>
+          </button>
+        </div>
+      </div>
+
       {/* Product Creation Form Card */}
       <div className="card">
         <div className="card-header">
           <div>
-            <h3>📦 Register New Product</h3>
+            <h3>📦 Register Single Custom Product</h3>
             <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Enter product specs and upload/select visual product thumbnail:</p>
           </div>
           <span className="btn-accent btn-xs">
@@ -301,7 +345,7 @@ export default function ManufacturerView({
                       </div>
                     </div>
 
-                    <div className="product-actions">
+                    <div className="product-actions" style={{ flexWrap: 'wrap', gap: '6px' }}>
                       {isSigned ? (
                         <button onClick={() => onOpenQRView(p)} className="btn-accent btn-xs" style={{ flex: 1 }}>
                           <Eye size={14} />
@@ -313,6 +357,11 @@ export default function ManufacturerView({
                           <span>Sign &amp; Generate QR</span>
                         </button>
                       )}
+
+                      <button onClick={() => handleOpenBulkModal(p)} className="btn-secondary btn-xs" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <PackageCheck size={13} />
+                        <span>Batch QRs (PDF)</span>
+                      </button>
 
                       <button onClick={() => onTestVerify(JSON.stringify(p.qrPayload || {}))} className="btn-secondary btn-xs">
                         Test Verify
@@ -350,6 +399,19 @@ export default function ManufacturerView({
           <textarea className="input-field mono" rows={2} value={mfgPublicKeyBase64 || ''} readOnly style={{ fontSize: '11px', color: '#10B981' }} />
         </div>
       </div>
+
+      <BulkGenerationModal
+        isOpen={isBulkModalOpen}
+        onClose={() => setIsBulkModalOpen(false)}
+        mfgOrg={mfgOrg}
+        mfgBrand={mfgBrand}
+        mfgKeyId={mfgKeyId}
+        mfgPrivateKeyHex={mfgPrivateKeyHex}
+        mfgPublicKeyBase64={mfgPublicKeyBase64}
+        products={products}
+        initialProduct={bulkInitialProduct}
+        onAddBulkProducts={onAddBulkProducts}
+      />
     </div>
   );
 }

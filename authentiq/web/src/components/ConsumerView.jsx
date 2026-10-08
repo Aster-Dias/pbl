@@ -20,7 +20,7 @@ export default function ConsumerView({ cachedKeys, scanHistory, onAddScanResult,
         v: 1, alg: 'ES256', kid: 'AUTHENTIQ-KEY-001', mid: 'AUTH',
         pid: 'AUTH-P001', name: 'Acme Paracetamol 500mg', brand: 'Acme Pharma',
         batch: 'BATCH001', mfg: '2026-08-01', exp: '2028-08-01',
-        sig: 'MEUCIQDV7Rz4qOWaxnEQBaOwPQMVYrwEREeBI02CSiXsgmT5vwIgcaOgCxlPDZQ1B3jEPd/3YdSTwFXpWtTN8cLSP+zTehA=',
+        sig: 'QEaVANmsfG9rmSWLY6MRy9Jx/z6v1Zhv5iCDpH402btKuUUJJA0rlGzc9qBbQcMsTjQLcpYxNkmvH5Pob04qYg==',
       }
     },
     tampered: {
@@ -29,7 +29,7 @@ export default function ConsumerView({ cachedKeys, scanHistory, onAddScanResult,
         v: 1, alg: 'ES256', kid: 'AUTHENTIQ-KEY-001', mid: 'AUTH',
         pid: 'AUTH-P001', name: 'Acme Fake Tablet 500mg', brand: 'Acme Pharma',
         batch: 'BATCH001', mfg: '2026-08-01', exp: '2028-08-01',
-        sig: 'MEUCIQDV7Rz4qOWaxnEQBaOwPQMVYrwEREeBI02CSiXsgmT5vwIgcaOgCxlPDZQ1B3jEPd/3YdSTwFXpWtTN8cLSP+zTehA=',
+        sig: 'QEaVANmsfG9rmSWLY6MRy9Jx/z6v1Zhv5iCDpH402btKuUUJJA0rlGzc9qBbQcMsTjQLcpYxNkmvH5Pob04qYg==',
       }
     },
     clone: {
@@ -38,7 +38,7 @@ export default function ConsumerView({ cachedKeys, scanHistory, onAddScanResult,
         v: 1, alg: 'ES256', kid: 'AUTHENTIQ-KEY-001', mid: 'AUTH',
         pid: 'AUTH-P001', name: 'Acme Paracetamol 500mg', brand: 'Acme Pharma',
         batch: 'BATCH001', mfg: '2026-08-01', exp: '2028-08-01',
-        sig: 'MEUCIQDV7Rz4qOWaxnEQBaOwPQMVYrwEREeBI02CSiXsgmT5vwIgcaOgCxlPDZQ1B3jEPd/3YdSTwFXpWtTN8cLSP+zTehA=',
+        sig: 'QEaVANmsfG9rmSWLY6MRy9Jx/z6v1Zhv5iCDpH402btKuUUJJA0rlGzc9qBbQcMsTjQLcpYxNkmvH5Pob04qYg==',
       },
       isClone: true
     }

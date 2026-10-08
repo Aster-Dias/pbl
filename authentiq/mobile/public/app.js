@@ -86,7 +86,7 @@ if (STATE.mfgProducts.length === 0) {
       manufacturingDate: '2026-08-01',
       expiryDate: '2028-08-01',
       keyId: 'AUTHENTIQ-KEY-001',
-      signature: 'MEUCIQDV7Rz4qOWaxnEQBaOwPQMVYrwEREeBI02CSiXsgmT5vwIgcaOgCxlPDZQ1B3jEPd/3YdSTwFXpWtTN8cLSP+zTehA=',
+      signature: 'QEaVANmsfG9rmSWLY6MRy9Jx/z6v1Zhv5iCDpH402btKuUUJJA0rlGzc9qBbQcMsTjQLcpYxNkmvH5Pob04qYg==',
       scanCount: 12,
       riskLevel: 'LOW',
       status: 'ACTIVE',
@@ -100,7 +100,7 @@ if (STATE.mfgProducts.length === 0) {
       manufacturingDate: '2026-09-15',
       expiryDate: '2029-09-15',
       keyId: 'AUTHENTIQ-KEY-001',
-      signature: 'MEQCIG8jWn0c2YmP5kLv9xQ1r2t4Y5u6I8o9p0q1r2s3t4u5AiA3e5r6t7y8u9i0o1p2q3r4s5t6u7v8w9x0y1z2a3b4c5==',
+      signature: 'iQC65DY1YRmhDsN8I4/jPGie73L9RebZ/nBy96ElTjFGFM0kfs4eLVBBMdrol2AZe9MuvAq/E4QOZswvkQHBsw==',
       scanCount: 3,
       riskLevel: 'LOW',
       status: 'ACTIVE',
@@ -173,15 +173,12 @@ function buildCanonicalString(v, mid, pid, name, brand, batch, mfg, exp) {
 }
 
 function parseSignatureBytes(sigBase64) {
+  if (!sigBase64) return new Uint8Array(64);
   const bytes = base64ToBytes(sigBase64);
-  // If ASN.1 DER sequence
-  if (bytes[0] === 0x30) {
-    return p256.Signature.fromDER(bytes);
-  }
   if (bytes.length === 64) {
-    return p256.Signature.fromCompact(bytes);
+    return bytes;
   }
-  return p256.Signature.fromDER(bytes);
+  return bytes.slice(0, 64);
 }
 
 function parsePublicKeyBytes(pubKeyBase64OrPem) {
